@@ -148,14 +148,10 @@ All server data is stored locally in the `.data/` directory next to the executab
 
 To back up your progress or move to another machine, simply copy the `.data/` folder.
 
-## Community & Support
-
-Have questions, suggestions, or need help? Join our [Discord Server](https://discord.gg/Jpdq6sS3Kn)!
-
 ## Credits & Acknowledgements
 
 Special thanks to:
-- [local-osu-server](https://github.com/jeevanjohnson/local-osu-server) by [Jeevan Johnson](https://github.com/jeevanjohnson) and its contributors for the original inspiration and foundational work that helped make this project possible.
+- [local-osu-server](https://github.com/jeevanjohnson/local-osu-server) by [Jeevan Johnson](https://github.com/jeevanjohnson), [ptrchain's fork](https://github.com/ptrchain/osu-echo) and its contributors for the original inspiration and foundational work that helped make this project possible.
 
 ## License
 
