@@ -44,7 +44,7 @@ cargo run --release
 
 ### 2. First Launch & Setup
 
-On Windows, the first launch asks for administrator permission to add the `osu.*` entries to your hosts file and trust the local HTTPS certificate. Accept the prompt, or start `osu-echo.exe` as administrator. If the website does not load afterwards, reload the page with **CTRL + F5**.
+On Windows, the first launch asks for administrator permission to add the `osu.*` entries to your hosts file and trust the local HTTPS certificate. Accept the prompt, or start `osu-echo.exe` as administrator. If the website does not load afterwards, reload the page with **CTRL + F5, or CTRL + R**.
 
 The server then creates its `.env` and `.data/` folder, starts, and opens the admin page in your browser (`http://osu.localhost:5000/admin`, or `http://localhost:5000/admin` if the hosts file is not ready yet). A guided setup walks you through:
 
