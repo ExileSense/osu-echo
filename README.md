@@ -1,7 +1,4 @@
 # osu-echo
-
-[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/Jpdq6sS3Kn)
-
 A local osu! server written in Rust. It lets you run your own private server on your computer for score saving, performance points (PP) calculation, local leaderboards, and beatmap downloads.
 
 ## Features
@@ -27,14 +24,14 @@ A local osu! server written in Rust. It lets you run your own private server on 
 ### 1. Get the Server
 
 #### Option A: Download Pre-built Release (Recommended)
-1. Download the latest `osu-echo-vX.X.X-windows-x86_64.zip` from [Releases](https://github.com/ptrchain/local-bancho-rust/releases).
+1. Download the latest osu-echo zip from [Releases](https://github.com/ExileSense/osu-echo/releases).
 2. Extract the zip into a folder.
 3. Run `osu-echo.exe`.
 
 #### Option B: Build from Source
 ```bash
-git clone https://github.com/ptrchain/local-bancho-rust.git
-cd local-bancho-rust
+git clone https://github.com/ExileSense/osu-echo.git
+cd osu-echo
 cargo run --release
 ```
 
