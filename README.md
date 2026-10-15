@@ -1,4 +1,7 @@
 # osu-echo
+
+[![Discord](https://img.shields.io/badge/Discord-Join%20Community-5865F2?logo=discord&logoColor=white)](https://discord.gg/Jpdq6sS3Kn)
+
 A local osu! server written in Rust. It lets you run your own private server on your computer for score saving, performance points (PP) calculation, local leaderboards, and beatmap downloads.
 
 ## Features
@@ -12,7 +15,11 @@ A local osu! server written in Rust. It lets you run your own private server on 
   - **Tillerino**: Send `/np` in chat or PM to get instant difficulty breakdowns and PP calculations for Nomod, HD, HR, DT, etc.
 - **Local Leaderboards & Profiles**: Track personal bests, total score, hit accuracy, play count, and global rank estimates.
 - **Discord Webhook Integration**: Automatically post submitted plays with Rich Embeds and configurable minimum PP thresholds directly to a Discord channel.
-- **Streamlined Setup**: Quick interactive setup with auto-detection. External API keys (osu! v1 and osudaily) power online leaderboards and global rank calculations.
+- **Web-Based Setup & Admin Panel**: First-run setup is a guided popup on the local admin page, with auto-detection of your osu! folder. Manage users, maps, API keys, settings and the website theme from the same page.
+- **Official Profile Import**: Import your avatar, cover, profile details, scores and (optionally) rank history from your official osu! profile.
+- **Exact PP**: pp is stored with 4 decimals internally and shown rounded on the site; hover the value to see the exact figure.
+- **Local Profile Website**: A local osu!web-style profile site with four selectable themes (modern, 2019, 2017, 2016).
+- **Automatic Windows Setup**: Adds the required hosts-file entries and trusts the local HTTPS certificate for you.
 
 ## Requirements
 
@@ -24,35 +31,35 @@ A local osu! server written in Rust. It lets you run your own private server on 
 ### 1. Get the Server
 
 #### Option A: Download Pre-built Release (Recommended)
-1. Download the latest osu-echo zip from [Releases](https://github.com/ExileSense/osu-echo/releases).
+1. Download the latest `osu-echo-vX.X.X-windows-x86_64.zip` from [Releases](https://github.com/ptrchain/local-bancho-rust/releases).
 2. Extract the zip into a folder.
 3. Run `osu-echo.exe`.
 
 #### Option B: Build from Source
 ```bash
-git clone https://github.com/ExileSense/osu-echo.git
-cd osu-echo
+git clone https://github.com/ptrchain/local-bancho-rust.git
+cd local-bancho-rust
 cargo run --release
 ```
 
 ### 2. First Launch & Setup
 
-When you start `osu-echo` for the first time, an interactive **Configuration Wizard** runs automatically in the terminal, asking which setup experience you prefer:
+On Windows, the first launch asks for administrator permission to add the `osu.*` entries to your hosts file and trust the local HTTPS certificate. Accept the prompt, or start `osu-echo.exe` as administrator. If the website does not load afterwards, reload the page with **CTRL + F5**.
 
-- **[1] Quick Setup (Recommended)**: Auto-detects your osu! installation, prompts for essential API keys (osu! v1 & osudaily) for online leaderboards and global rank calculation, automatically sets up and trusts the local HTTPS certificate, and applies recommended defaults.
-- **[2] Advanced Setup**: Granular control for power users—customize directory paths (Songs/Replays/Screenshots), server host IP and port settings, essential API keys (osu! v1 API & osudaily ranking), leaderboard scoring modes, profile country flag, and official Bancho account sync.
+The server then creates its `.env` and `.data/` folder, starts, and opens the admin page in your browser (`http://osu.localhost:5000/admin`, or `http://localhost:5000/admin` if the hosts file is not ready yet). A guided setup walks you through:
+
+1. **Account**: create your local account, or import your official osu! profile (avatar, cover, details, scores and optional rank history).
+2. **API keys**: enter your osu! v1 key, osu! v2 client ID/secret and osu!daily key. Each key has a **Test** button, and each card links to where the key is obtained.
+3. **Settings**: osu! folder (auto-detected), leaderboard options, Discord and server options under the **Other** tab.
 
 > [!NOTE]
-> **Privacy & Local Storage**: All API keys and account credentials entered during setup or configured in `.env` are stored strictly locally on your machine and are never transmitted to any third-party or remote server. Passwords for account sync are MD5-hashed before saving.
+> **Privacy & Local Storage**: All API keys and account credentials entered during setup or configured in `.env` are stored strictly locally on your machine and are never transmitted to any third-party or remote server, apart from the requests needed to call the services the keys belong to.
 
-> [!TIP]
-> In **Quick Setup**, default values (such as detected osu! path and recommended settings) can be accepted instantly by pressing **Enter**.
-
-On future launches, the server will start immediately using your saved configuration. If you ever want to re-run the setup wizard later, pass the `--setup` (or `-s`) flag:
+Existing installs never show the guide again. To run it again, start the server with the `--setup` (or `-s`) flag:
 ```bash
 osu-echo.exe --setup
 ```
-Alternatively, you can manually edit `.env` at any time.
+You can also edit `.env` manually at any time, or change settings from the admin page's **Other** tab. Values set in `.env` take priority over values saved from the admin page.
 
 ### 3. Connect from osu!
 
@@ -66,6 +73,8 @@ To connect your osu! client to the local server:
    ```
 3. Launch osu! using the shortcut.
 4. Log in with any username and password. The server will create your profile automatically.
+
+The admin page is only reachable from your own computer, at `osu.localhost:5000/admin`.
 
 ## In-Game Commands
 
@@ -105,6 +114,17 @@ Send commands via PM to **Tillerino** or type `/np` in any channel:
 | `!acc <value>` | Calculate exact PP for a custom accuracy (e.g. `!acc 98.5`) |
 | `!r` / `!recommend` | Recommend a beatmap to play |
 
+## Admin Panel & Website
+
+Open `http://osu.localhost:5000/admin` while the server is running.
+
+- **Stats, Users, Maps**: overview, create/edit/delete users, change map status.
+- **Keys**: save and test your API keys.
+- **Console**: view and clear the server log.
+- **Other**: change the website theme (modern, 2019, 2017, 2016), edit server settings, and install/repair the Windows certificate and hosts entries.
+
+The profile site is at `http://osu.localhost:5000/`. Profile pp is shown rounded; hover it to see the exact value. Official ranks are looked up with the exact pp.
+
 ## Command-Line Options
 
 ```text
@@ -114,9 +134,9 @@ Options:
   -h, --help           Print help information
   -v, --version        Print version information
   -d, --debug          Enable verbose debug logging (or hold Shift when starting)
-  -s, --setup          Run or re-run the interactive setup wizard
+  -s, --setup          Re-run the first-run setup guide on the admin page
       --reconfigure    Alias for --setup
-      --trust-cert     Install and trust the local TLS certificate in Windows Root store
+      --trust-cert     Install and trust the local TLS certificate in the Windows Root store
 ```
 
 ## Data & Backups
