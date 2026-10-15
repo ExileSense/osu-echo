@@ -1,0 +1,53 @@
+body.theme-2019{background:#171a1c;color:#fff;min-height:100vh;margin:0}
+body.theme-2019 .y19-nav{background:#3a86ad url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='208'%3E%3Cpolygon points='0%2C208 120%2C0 240%2C208' fill='%23ffffff' fill-opacity='.05'/%3E%3Cpolygon points='120%2C208 180%2C104 240%2C208' fill='%23000000' fill-opacity='.04'/%3E%3Cpolygon points='0%2C0 60%2C104 120%2C0' fill='%23000000' fill-opacity='.04'/%3E%3C/svg%3E") 0 0/200px 173px;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+body.theme-2019 .y19-nav__bar{width:min(976px,calc(100% - 20px))}
+body.theme-2019 .y19l-spacer{height:90px}
+body.theme-2019.y19-pinned .y19-nav{background-color:#222;background-image:none}
+body.theme-2019 .bm-head{display:none}
+body.theme-2019 .osu-page--beatmapsets-search-header{width:976px;max-width:calc(100% - 20px);margin:0 auto;padding:0}
+body.theme-2019 .beatmapsets-search{position:relative}
+body.theme-2019 .beatmapsets-search__cover{background:center/cover no-repeat #2e3538;opacity:.9}
+body.theme-2019 .nxl-items{display:flex;flex-wrap:wrap;gap:10px;margin:0}
+body.theme-2019 .nxl-item{width:calc(50% - 5px)}
+@media (max-width:760px){body.theme-2019 .nxl-item{width:100%}}
+body.theme-2019 .nxl-panel{position:relative}
+body.theme-2019 .nxl-panel__panel{position:relative;background:#fff;color:#333;border-radius:0;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+body.theme-2019 .nxl-panel__thumb{display:block;position:relative;height:117px;background:var(--bg) center/cover no-repeat #3a4144;color:#fff;text-decoration:none}
+body.theme-2019 .nxl-panel__thumb::before{content:"";position:absolute;inset:0;background:linear-gradient(rgba(0,0,0,0) 25%,rgba(0,0,0,.65))}
+body.theme-2019 .nxl-panel__title-artist-box{position:absolute;left:9px;right:90px;bottom:8px;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+body.theme-2019 .nxl-panel__header-text{font-size:14px;font-weight:600;line-height:1.3;font-style:italic}
+body.theme-2019 .nxl-panel__header-text--title{font-size:20px;font-weight:700}
+body.theme-2019 .nxl-panel__counts-box{position:absolute;right:12px;top:10px;display:flex;flex-direction:column;align-items:flex-end;gap:1px;font-size:15px;font-style:italic;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+body.theme-2019 .nxl-panel__count{display:flex;align-items:center;gap:4px}
+body.theme-2019 .nxl-status--cover{position:absolute;left:9px;top:10px;font-size:12px;font-weight:600;letter-spacing:0;text-transform:uppercase;padding:5px 12px;border-radius:100px;background:rgba(0,0,0,.45);color:#fff;z-index:1}
+body.theme-2019 .nxl-status{display:inline-block}
+body.theme-2019 .nxl-status[data-st=ranked],body.theme-2019 .nxl-status[data-st=approved]{background:rgba(70,70,70,.65)}
+body.theme-2019 .nxl-panel__content{padding:8px 9px 9px;min-height:74px}
+body.theme-2019 .nxl-panel__row{font-size:11px;color:#333;line-height:1.35}
+body.theme-2019 .nxl-panel__mapper-source-box a{color:#2299bb;text-decoration:none}
+body.theme-2019 .nxl-panel__difficulties{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+body.theme-2019 .nxl-diff{width:18px;height:18px;border-radius:50%;border:2px solid var(--c);box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;color:var(--c);background:#fff;font-size:9px}
+body.theme-2019 .nxl-diff span{font-size:9px;line-height:1}
+body.theme-2019 .nxl-diff-more{font-size:11px;color:#777;align-self:center}
+body.theme-2019 .nxl-panel__play,body.theme-2019 .nxl-panel__dl{position:absolute;right:10px;top:70px;width:30px;height:30px;border-radius:50%;border:2px solid #fff;background:rgba(0,0,0,.35);color:#fff;display:flex;align-items:center;justify-content:center;padding:0;font-size:12px;text-decoration:none;cursor:pointer;z-index:2}
+body.theme-2019 .nxl-panel__dl{right:48px}
+body.theme-2019 .nxl-panel__play:hover,body.theme-2019 .nxl-panel__play.bm-playing{background:#ff66aa}
+body.theme-2019 .nxl-panel__dl:hover{background:#3a86ad}
+body.theme-2019 .nxl-more{text-align:center;padding:20px 0}
+body.theme-2019 .nxl-more__link{color:#fff;text-decoration:none;border-bottom:2px solid #ff66aa;padding-bottom:2px}
+body.theme-2019 .bm-items{background:transparent!important;padding:0!important}
+body.theme-2019 .bm-src{text-align:center;color:#8a9a9f;font-size:11px;padding:6px 0 18px}
+body.theme-2019 #bm-sort-area .osu-page{width:976px;max-width:calc(100% - 20px);margin:0 auto;padding:0}
+body.theme-2019 #bm-sort-area .beatmapsets{background:#2e3538}
+body.theme-2019 .bm-items{padding:10px 20px 20px!important}
+body.theme-2019 .nxl-panel__play,body.theme-2019 .nxl-panel__dl{opacity:0;transition:opacity .15s}
+body.theme-2019 .nxl-panel:hover .nxl-panel__play,body.theme-2019 .nxl-panel:hover .nxl-panel__dl,body.theme-2019 .nxl-panel__play.bm-playing{opacity:1}
+body.theme-2019 .nxl-panel__play,body.theme-2019 .nxl-panel__dl{top:14px;right:112px;display:none}
+body.theme-2019 .nxl-panel:hover .nxl-panel__play,body.theme-2019 .nxl-panel:hover .nxl-panel__dl{display:flex}
+body.theme-2019 .nxl-panel__dl{right:150px}
+body.theme-2019 .nxb-modes{display:flex;justify-content:center;gap:22px;background:#2e3538;padding:16px 0 12px}
+body.theme-2019 .nxb-mode{color:#fff;text-decoration:none;font-size:15px;display:flex;align-items:center;gap:6px;padding-bottom:3px;opacity:.85}
+body.theme-2019 .nxb-mode--empty{opacity:.55;pointer-events:none}
+body.theme-2019 .nxb-mode--active{opacity:1;font-weight:700;box-shadow:inset 0 -3px 0 #ffcc22}
+body.theme-2019 .nxb-mode__n{background:rgba(255,255,255,.25);border-radius:3px;font-size:10px;line-height:14px;padding:0 4px}
+body.theme-2019 .beatmapset-scoreboard__mods{display:none}

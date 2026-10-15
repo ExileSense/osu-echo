@@ -1,0 +1,6 @@
+osu! 2016 theme
+===============
+Layout, stylesheets, fonts, flags, grade icons and charts in this folder are taken from the osu!Titanic
+website ("stern"), https://github.com/osuTitanic/titanic , MIT licensed, (c) 2023-2026 Levi.
+See LICENSE-titanic.txt. The profile renderer (2016.js), the generator and 2016.css are local additions.
+The beatmap listing / beatmap page / score page layouts (css/beatmap.css, css/scores.css, css/search.css and images/beatmap/*) are also from osu!Titanic (MIT).

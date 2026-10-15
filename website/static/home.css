@@ -1,0 +1,47 @@
+html{background:#1d1a24}
+body.home-page{margin:0;background:hsl(var(--hsl-b6));min-height:100vh;color:#fff;font-family:Torus,Exo 2,Arial,sans-serif;font-size:14px;position:relative}
+body.home-page a{color:inherit}
+body.home-page .osu-page{position:relative}
+.home-page .landing-nav__link:hover{color:#f6a}
+.landing-hero__pippi{background-image:-webkit-image-set(url(/site/static/home/pippi.png) 1x,url(/site/static/home/pippi@2x.png) 2x);background-image:image-set(url(/site/static/home/pippi.png) 1x,url(/site/static/home/pippi@2x.png) 2x)}
+.landing-hero__pippi-logo{background-image:-webkit-image-set(url(/site/static/home/logo.png) 1x,url(/site/static/home/logo@2x.png) 2x);background-image:image-set(url(/site/static/home/logo.png) 1x,url(/site/static/home/logo@2x.png) 2x)}
+.landing-hero__bg{display:block}
+.landing-nav__link--locale{color:#fff;font-weight:600;cursor:default}
+.home-powered{text-align:center;font-style:italic;font-size:12px;font-weight:700;padding:20px 0 24px}
+.landing-footer-social{padding-top:10px}
+.osu-layout__section--landing-footer{margin-top:30px;padding-top:10px}
+.home-page .landing-sitemap{margin-top:35px}
+.landing-graph{display:block;width:100%;height:100%}
+#home-account .landing-nav__link{white-space:nowrap}
+#home-account .home-sep{opacity:.5}
+body.home-archive{font-family:"Exo 2",Exo2,Torus,Arial,sans-serif}
+body.home-archive,html:has(body.home-archive){background:#333}
+.home-archive .landing-nav__link--bold,.home-archive .landing-nav__link{font-weight:600}
+.home-archive .landing-nav__link--bold{font-weight:700}
+.home-archive .landing-hero{height:440px;box-shadow:none}
+.home-archive .btn-osu-big{--bg:#1b7b97;--hover-bg:#27a1c3;border-radius:0;box-shadow:none}
+.home-archive .landing-hero__bg-container:after{background-color:rgba(30,30,30,.45)}
+.home-archive .landing-graph__area{fill:#c01480}
+.home-archive .landing-nav__link:hover{color:#f6a}
+.home-archive .landing-footer-social__icon{border-width:2px;border-radius:50%}
+.home-archive .osu-layout__section--landing-footer{background-color:#111}
+.home-blog{display:flex;align-items:center;width:245px;height:73px;margin:24px auto 0;background:#2b4150;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.4);text-decoration:none;overflow:hidden;color:#fff}
+.home-blog__logo{flex:none;width:92px;height:100%;display:flex;align-items:center;justify-content:center;background:#050505;border-radius:0 50% 50% 0 / 0 40% 40% 0;font-size:32px;font-weight:800;letter-spacing:-2px;background-image:linear-gradient(90deg,#000,#000)}
+.home-blog__logo{background-clip:padding-box;color:#fff;-webkit-text-fill-color:transparent;background-image:linear-gradient(90deg,#f6a,#fc4,#4df);-webkit-background-clip:text;background-clip:text}
+.home-blog{position:relative}
+.home-blog:before{content:"";position:absolute;left:0;top:0;bottom:0;width:92px;background:#050505;border-radius:0 46px 46px 0;z-index:0}
+.home-blog__logo,.home-blog__text{position:relative;z-index:1}
+.home-blog__text{margin-left:10px;font-size:14px;font-weight:600}
+@media(max-width:767px){.landing-nav{flex-wrap:wrap;gap:10px;padding:16px 10px}.landing-nav__section{flex-wrap:wrap}.landing-hero{height:380px}.landing-sitemap{grid-template-columns:1fr}}
+.home-login-anchor{height:0;z-index:60;padding:0}
+.home-login-anchor .login-box--landing{position:absolute;top:0;right:0;left:auto;width:auto}
+.home-login-anchor .login-box[hidden]{display:none}
+.home-login-anchor .login-box__content{right:0;left:auto;top:66px;width:300px}
+.home-login-anchor .login-box__row--inputs input{color:#fff}
+.home-login-anchor .btn-osu-big--nav-popup{--bg:#5b3ec0;--hover-bg:#7656e0}
+html.home-loggedin .home-login-anchor{position:fixed;top:78px;right:calc(50% - 500px);left:auto;width:0;max-width:none;margin:0;z-index:60}
+@media(max-width:1020px){html.home-loggedin .home-login-anchor{right:10px}}
+html.home-loggedin .home-login-anchor .login-box__content{top:6px}
+.home-login-anchor .login-box__form-input::-webkit-calendar-picker-indicator{display:none!important}
+.home-login-anchor .btn-osu-big--nav-popup,.home-login-anchor .btn-osu-big--nav-popup *{color:#fff}
+.home-login-anchor .login-box__form-input{width:100%;box-sizing:border-box}

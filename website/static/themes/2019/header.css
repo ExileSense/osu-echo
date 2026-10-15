@@ -1,0 +1,51 @@
+body.theme-2019{
+  --green:#05ffa2; --green-light:#deff87; --green-dark:#a6cc00;
+  --gg-darkest:#1e2422; --gg-darker:#2c3532; --gg-dark:#33413c; --gg:#4e7466; --gg-light:#77998e; --gg-lighter:#9ebab1;
+  --yellow:#ffcc22; --yellow-dark:#eeaa00; --pink:#ff66aa; --pink-light:#ff99cc; --blue-light:#99eeff;
+  --img:/site/static/themes/2019/img;
+  background:#111; color:#fff; font-family:'Exo 2','Helvetica Neue',Tahoma,Arial,sans-serif; font-size:14px;
+}
+body.theme-2019 button,body.theme-2019 input,body.theme-2019 select,body.theme-2019 textarea{font-family:inherit}
+body.theme-2019 .y19-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+body.theme-2019 .y19-hidden{display:none!important}
+body.theme-2019 .mobile-header,body.theme-2019 .mobile-menu{display:none}
+
+body.theme-2019 .y19-nav{position:fixed; top:0; left:0; right:0; height:90px; z-index:100; transition:height .3s; --logo:70px; --av:60px}
+body.theme-2019.y19-pinned .y19-nav{height:50px; --logo:40px; --av:40px}
+body.theme-2019 .y19-nav::before{content:''; position:absolute; inset:0; background:#222; opacity:0; transition:opacity .3s; pointer-events:none}
+body.theme-2019.y19-pinned .y19-nav::before{opacity:1}
+body.theme-2019 .y19-nav__menu-bg{position:absolute; left:0; right:0; top:0; height:0; background:rgba(17,17,17,.92); border-bottom:1px solid #bb1177; opacity:0; transition:opacity .15s; pointer-events:none; overflow:hidden}
+body.theme-2019 .y19-nav:has(.y19-menu__item:hover) .y19-nav__menu-bg{height:230px; opacity:1}
+body.theme-2019 .y19-nav__bar{position:relative; display:flex; align-items:center; height:100%; width:min(1000px,calc(100% - 40px)); margin:0 auto; transition:height .3s}
+body.theme-2019 .y19-logo{position:relative; display:block; width:var(--logo); height:var(--logo); margin:0 10px 0 -5px; flex:none; transition:width .3s,height .3s}
+body.theme-2019 .y19-logo img,body.theme-2019 .y19-logo__tri{position:absolute; inset:0; width:100%; height:100%; transition:transform .1s}
+body.theme-2019 .y19-logo__tri{background:url(/site/static/themes/2019/img/osu-logo-triangles.svg) center/contain no-repeat; opacity:0; transition:opacity .1s,transform .1s}
+body.theme-2019 .y19-logo:hover img,body.theme-2019 .y19-logo:hover .y19-logo__tri{transform:scale(1.11)}
+body.theme-2019 .y19-logo:hover .y19-logo__tri{opacity:1}
+body.theme-2019 .y19-menu{display:flex; align-self:stretch; margin-right:auto; font-size:14px; font-weight:500}
+body.theme-2019 .y19-menu__item{position:relative; display:flex; align-items:stretch}
+body.theme-2019 .y19-menu__link{display:flex; align-items:center; padding:10px; color:#fff; text-decoration:none; position:relative}
+body.theme-2019 .y19-menu:hover .y19-menu__link{color:rgba(255,255,255,.7)}
+body.theme-2019 .y19-menu .y19-menu__item:hover .y19-menu__link{color:#fff}
+body.theme-2019 .y19-menu__item--current .y19-menu__link span{position:relative}
+body.theme-2019 .y19-menu__item--current .y19-menu__link span::after{content:''; position:absolute; left:0; right:0; top:100%; margin-top:5px; height:3px; border-radius:10px; background:var(--pink)}
+body.theme-2019 .y19-menu__link--search{align-self:center; width:40px; height:40px; padding:0; border-radius:50%; justify-content:center}
+body.theme-2019 .y19-popup{display:none; position:absolute; left:10px; top:calc(100% - 20px); flex-direction:column; white-space:nowrap; padding-top:0}
+body.theme-2019.y19-pinned .y19-popup{top:calc(100% - 8px)}
+body.theme-2019 .y19-menu__item:hover .y19-popup{display:flex}
+body.theme-2019 .y19-popup a{color:var(--pink-light); text-decoration:none; padding:6px 10px; margin-left:-10px; line-height:1; font-size:14px; position:relative}
+body.theme-2019 .y19-popup a::before{content:''; position:absolute; right:100%; top:8px; bottom:8px; width:3px; border-radius:10px; background:var(--yellow); opacity:0; margin-right:-10px}
+body.theme-2019 .y19-popup a:hover{color:#fff}
+body.theme-2019 .y19-popup a:hover::before{opacity:1}
+body.theme-2019 .y19-nav__right{display:flex; align-items:center; flex:none}
+body.theme-2019 .y19-btn{width:40px; height:40px; box-sizing:border-box; margin:0 3px; border-radius:50%; border:3px solid rgba(255,255,255,.25); color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; text-decoration:none; background:transparent}
+body.theme-2019 .y19-btn:hover{background:rgba(0,0,0,.5); border-color:#fff; color:#fff}
+body.theme-2019 .y19-btn--support:hover{color:var(--pink)}
+body.theme-2019 .y19-btn--stadium{width:auto; padding:0 10px; border-radius:40px}
+body.theme-2019 .y19-btn--stadium img{height:16px; width:auto}
+body.theme-2019 .y19-avatar{width:var(--av); height:var(--av); margin-left:6px; padding:0; border:0; border-radius:10px; overflow:hidden; background:#000; cursor:pointer; transition:width .3s,height .3s; display:block}
+body.theme-2019 .y19-avatar img{width:100%; height:100%; object-fit:cover; display:block; border-radius:0}
+body.theme-2019 .account-panel{position:fixed; top:80px; right:max(20px,calc((100% - 1000px)/2)); z-index:110}
+body.theme-2019.y19-pinned .account-panel{top:56px}
+
+body.theme-2019 .y19-avatar{display:block}

@@ -1,0 +1,14 @@
+body.t16-home .page { min-height: 300px; padding-bottom: 20px; }
+body.t16-home .left-side { min-height: 0; width: 480px; }
+body.t16-home .right-side { height: auto; overflow: visible; margin-right: 0; width: 358px; }
+body.t16-home .news-wrapper { margin-bottom: 0; }
+body.t16-home .most-played { position: static; width: auto; margin-top: 18px; }
+body.t16-home .blurb-text a { color: #3843a6; }
+.t16-buttons { display: block; }
+.t16-btn { display: block; position: relative; width: 356px; height: 55px; margin-bottom: 8px; border-radius: 6px; overflow: hidden; text-decoration: none; text-align: center; color: #fff; border: 1px solid rgba(0,0,0,.25); box-shadow: 0 1px 2px rgba(60,40,120,.35); }
+.t16-btn-top { display: block; font: 700 31px/36px "Arial Narrow", Impact, "Arial Grande", Arial, sans-serif; letter-spacing: 1px; text-shadow: 0 2px 2px rgba(0,0,0,.35); padding-top: 3px; transform: scaleX(.88); transform-origin: center; white-space: nowrap; }
+.t16-btn-sub { display: block; font-size: 9px; font-style: italic; line-height: 11px; text-shadow: 0 1px 1px rgba(0,0,0,.4); padding: 0 6px; }
+.t16-btn-dl { background: linear-gradient(#ff6fc0, #d41f8f 60%, #b01672); }
+.t16-btn-goodies { background: linear-gradient(#9bd63a, #5fa31c 60%, #458012); }
+.t16-btn-support { background: linear-gradient(#58b9f2, #2a8edc 60%, #1b6fb5); }
+.t16-btn:hover { filter: brightness(1.08); }

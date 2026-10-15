@@ -1,0 +1,42 @@
+body.theme-next.fl-page .osu-page{width:var(--w);max-width:calc(100% - 20px);margin:14px auto 0;padding:0;background:transparent}
+body.theme-next .fl-main{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);min-height:320px;padding-bottom:30px;color:#333}
+body.theme-next .fl-filters{background:#3a3a3a;padding:18px 30px 16px;gap:14px}
+body.theme-next .fl-filter{color:#ccc;border-top-color:var(--c);opacity:.85}
+body.theme-next .fl-filter[data-filter=all]{--c:#fff}
+body.theme-next .fl-filter.on{color:#fff;opacity:1}
+body.theme-next .fl-toolbar{background:#fff;padding:14px 30px 10px;color:#777;border-bottom:1px solid #eee}
+body.theme-next .fl-toolbar button{color:#777;border-radius:0}
+body.theme-next .fl-toolbar button:hover{color:var(--pink)}
+body.theme-next .fl-toolbar button.on{background:none;color:var(--pink);box-shadow:inset 0 -2px 0 var(--pink)}
+body.theme-next .fl-toolbar .vm{color:#aaa}
+body.theme-next .fl-toolbar .vm.on,body.theme-next .fl-toolbar .vm:hover{color:var(--pink);box-shadow:none}
+body.theme-next .fl-list{padding:14px 30px 0}
+body.theme-next .fl-empty{color:#777}
+body.theme-next .fl-empty a{color:var(--teal)!important}
+body.theme-next .fl-empty code{background:#eee;color:#333}
+body.theme-next .fl-note{color:#999}
+body.theme-next .fl-brick{display:flex;flex-wrap:wrap;gap:6px}
+body.theme-next .user-card-brick{background:#eee;padding:4px 10px}
+body.theme-next .user-card-brick a{color:var(--teal);text-decoration:none;font-weight:700}
+body.theme-next .nxf-cards{display:flex;flex-direction:column;gap:6px}
+body.theme-next .nxf-cards.user-cards--card{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+body.theme-next .nxf-card{position:relative;background:#f6f6f6;border-left:4px solid #bbb;height:64px;display:block}
+body.theme-next .nxf-card--on{border-left-color:#88b300;background:#f1f8e2}
+body.theme-next .nxf-card__link{display:flex;align-items:center;gap:12px;height:100%;padding:0 44px 0 6px;text-decoration:none;color:#333}
+body.theme-next .nxf-card:hover{background:#fdeef6}
+body.theme-next .nxf-av{width:50px;height:50px;object-fit:cover;background:#ddd;flex:none}
+body.theme-next .nxf-who{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+body.theme-next .nxf-name{color:var(--teal);font-weight:700;font-style:italic;font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.theme-next .nxf-meta{display:flex;align-items:center;gap:6px;min-height:16px}
+body.theme-next .nxf-heart{color:var(--pink);font-size:12px}
+body.theme-next .nxf-meta .fl-grp{background:#444;color:var(--c,#fff)}
+body.theme-next .nxf-status{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#666;text-align:right}
+body.theme-next .nxf-status small{display:block;font-size:10px;font-weight:400;color:#999}
+body.theme-next .nxf-dot{width:14px;height:14px;border-radius:50%;border:3px solid #999;box-sizing:border-box;flex:none}
+body.theme-next .nxf-card--on .nxf-dot{border-color:#88b300;background:#b3d944}
+body.theme-next .nxf-card--on .nxf-status{color:#5a7a00}
+body.theme-next .nxf-card .fl-menu-btn{position:absolute;right:8px;top:19px;color:#777;z-index:2}
+body.theme-next .fl-pop{background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.35);right:8px;top:46px}
+body.theme-next .fl-pop a,body.theme-next .fl-pop button{color:#333}
+body.theme-next .fl-pop a:hover,body.theme-next .fl-pop button:hover{background:#fdeef6}
+body.theme-next .fl-pop .danger{color:#cc3355}

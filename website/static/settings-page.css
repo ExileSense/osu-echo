@@ -1,0 +1,975 @@
+.settings-page {
+  animation: settings-fade-in 0.15s ease-out;
+  min-height: 100vh;
+  background-color: hsl(var(--hsl-b6));
+}
+
+@keyframes settings-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.settings-page .header-v4,
+body.t-settings .header-v4 {
+  display: block;
+}
+
+.header-v4--settings {
+  position: relative;
+  background-color: hsl(var(--hsl-d5));
+  overflow: hidden;
+}
+
+.header-v4--settings .header-v4__bg-container {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background-color: hsl(var(--hsl-d5));
+}
+
+.header-v4--settings .header-v4__bg {
+  position: absolute;
+  inset: 0;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  filter: blur(50px);
+  opacity: 0.25;
+  transform: scale(1.1);
+}
+
+.header-v4--settings .header-v4__bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    to right,
+    hsl(var(--hsl-d5)),
+    transparent 200px,
+    transparent 1000px,
+    hsl(var(--hsl-d5)) 1200px
+  );
+  background-position: center;
+  height: 100%;
+}
+
+.header-v4--settings .header-v4__container--main {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  max-width: 1000px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  min-height: 55px;
+}
+
+@media (min-width: 900px) {
+  .header-v4--settings .header-v4__container--main {
+    min-height: 75px;
+    padding-top: 20px;
+  }
+}
+
+.header-v4--settings .header-v4__content {
+  width: 100%;
+  position: relative;
+  z-index: 2;
+  max-width: 1000px;
+  box-sizing: border-box;
+}
+
+@media (min-width: 900px) {
+  .header-v4--settings .header-v4__content {
+    width: calc(100% - 40px);
+    margin: 0 auto;
+  }
+}
+
+.header-v4--settings .header-v4__row--title {
+  display: flex;
+  align-items: center;
+  height: 55px;
+  padding: 0 10px;
+  background-color: transparent;
+}
+
+@media (min-width: 900px) {
+  .header-v4--settings .header-v4__row--title {
+    padding: 0 50px;
+  }
+}
+
+.header-v4--settings .header-v4__icon {
+  width: 40px;
+  height: 40px;
+  background-image: url('/site/static/vendor/settings.70bf1e88.svg');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 75%;
+  margin-right: 10px;
+  flex: none;
+}
+
+.header-v4--settings .header-v4__title {
+  font-family: var(--font-default, Torus, Inter, sans-serif);
+  font-size: 24px;
+  font-weight: 700;
+  color: hsl(var(--hsl-c1));
+}
+
+.header-v4--settings .header-v4__container--nav {
+  background-color: hsl(var(--hsl-d4));
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.header-v4--settings .header-v4__row--bar {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 1000px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  background-color: hsl(var(--hsl-d4));
+}
+
+@media (min-width: 900px) {
+  .header-v4--settings .header-v4__row--bar {
+    width: calc(100% - 40px);
+    padding: 0 50px;
+  }
+}
+
+.header-nav-v4 {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  font-size: 14px;
+  position: relative;
+  width: 100%;
+}
+
+@media (min-width: 900px) {
+  .header-nav-v4 {
+    gap: 20px;
+  }
+}
+
+.header-nav-v4--list::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background-color: hsl(var(--hsl-h1));
+  opacity: 0.35;
+}
+
+.header-nav-v4__item {
+  display: flex;
+  align-items: baseline;
+}
+
+.header-nav-v4__link {
+  align-items: baseline;
+  display: flex;
+  gap: 2px 5px;
+  padding: 15px 0;
+  position: relative;
+  color: hsl(var(--hsl-l1));
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 120ms ease;
+}
+
+.header-nav-v4__link:hover {
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.header-nav-v4__link::before {
+  display: none;
+  transform: scaleY(0);
+}
+
+@media (min-width: 900px) {
+  .header-nav-v4__link::before {
+    content: "";
+    position: absolute;
+    bottom: -2px;
+    height: 5px;
+    width: 100%;
+    border-radius: 10000px;
+    background-color: hsl(var(--hsl-h1));
+    z-index: 1;
+    transition: transform 120ms ease;
+    display: block;
+    transform: scaleY(0);
+  }
+  .header-nav-v4__link:hover::before {
+    transform: scaleY(1);
+  }
+}
+
+.header-nav-v4__link--active {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+@media (min-width: 900px) {
+  .header-nav-v4__link--active::before {
+    transform: scaleY(1);
+  }
+}
+
+.header-nav-v4__text {
+  padding: 15px 0;
+  color: hsl(var(--hsl-f1));
+}
+
+.settings-page__body {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 20px 0 60px;
+  box-sizing: border-box;
+}
+
+@media (min-width: 900px) {
+  .settings-page__body {
+    width: calc(100% - 40px);
+  }
+}
+
+@media (max-width: 899px) {
+  .settings-page__body {
+    padding: 15px 10px 40px;
+  }
+}
+
+.osu-page--account-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+}
+
+.account-edit {
+  background-color: hsl(var(--hsl-b5));
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+}
+
+@media (min-width: 900px) {
+  .account-edit {
+    flex-direction: row;
+  }
+}
+
+.account-edit--first {
+  position: relative;
+}
+
+.account-edit--first::after {
+  box-shadow: inset 0 2px 3px -1px rgba(0, 0, 0, 0.25);
+  content: "";
+  height: 100%;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  width: 100%;
+}
+
+.account-edit__section {
+  flex: none;
+  width: 250px;
+  padding: 20px 20px 20px 10px;
+  box-sizing: border-box;
+}
+
+@media (min-width: 900px) {
+  .account-edit__section {
+    padding-bottom: 0;
+    padding-left: 50px;
+  }
+}
+
+.account-edit__section-title {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+  overflow-wrap: break-word;
+  font-family: var(--font-default, Torus, Inter, sans-serif);
+}
+
+.account-edit__input-groups {
+  flex: 1;
+  min-width: 0;
+}
+
+.account-edit__input-group {
+  background-color: hsl(var(--hsl-b4));
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.account-edit__input-group + .account-edit__input-group {
+  margin-top: 1px;
+}
+
+.account-edit-entry {
+  text-transform: none;
+  padding: 10px 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  box-sizing: border-box;
+}
+
+.account-edit-entry--block {
+  display: block;
+}
+
+@media (min-width: 900px) {
+  .account-edit-entry--block,
+  .account-edit-entry--no-label {
+    padding-left: 160px;
+  }
+}
+
+.account-edit-entry__label {
+  width: 100%;
+  flex: none;
+  padding-bottom: 5px;
+  order: -1;
+  font-weight: 700;
+  color: hsl(var(--hsl-f1));
+  box-sizing: border-box;
+  transition: color 120ms ease;
+  font-size: 13px;
+}
+
+@media (min-width: 900px) {
+  .account-edit-entry__label {
+    align-self: center;
+    width: 160px;
+    padding-right: 10px;
+    padding-bottom: 0;
+    text-align: right;
+  }
+}
+
+.account-edit-entry__label--top-pinned {
+  align-self: flex-start;
+  padding-top: 6px;
+}
+
+.account-edit-entry *:focus ~ .account-edit-entry__label,
+.account-edit-entry:focus-within > .account-edit-entry__label {
+  color: hsl(var(--hsl-l1));
+}
+
+.account-edit-entry__input {
+  flex: 1;
+  max-width: 250px;
+  align-self: stretch;
+  background-color: hsl(var(--hsl-b3));
+  border: 2px solid transparent;
+  border-radius: 4px;
+  color: #fff;
+  font-weight: 400;
+  margin: 0;
+  padding: 5px 10px;
+  height: 32px;
+  font-size: 13px;
+  font-family: inherit;
+  box-sizing: border-box;
+  outline: none;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.account-edit-entry__input:focus {
+  border-color: hsl(var(--hsl-l1));
+  background-color: hsl(var(--hsl-b2));
+}
+
+.account-edit-entry--read-only .account-edit-entry__input {
+  background: none;
+  border-color: transparent;
+  height: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  max-width: none;
+  flex: none;
+}
+
+.account-edit-entry--wide .account-edit-entry__input {
+  max-width: 100%;
+  width: 100%;
+}
+
+.account-edit-entry__button {
+  margin-left: 15px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.account-edit-entry__group {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.account-edit-entry__input--username {
+  background: none !important;
+  border: none !important;
+  height: 32px;
+  min-height: 32px;
+  max-width: none;
+  flex: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.settings-username-view {
+  display: inline-flex;
+  align-items: center;
+  gap: 15px;
+  height: 32px;
+}
+
+.settings-username-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 32px;
+  display: inline-block;
+}
+
+.settings-username-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  max-width: 440px;
+}
+
+.settings-input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-hint {
+  font-size: 12px;
+  color: hsl(var(--hsl-f1));
+  line-height: 1.45;
+  margin: 6px 0 0;
+}
+
+.settings-country-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+#settings-country-flag {
+  flex-shrink: 0;
+}
+
+.osu-select {
+  cursor: pointer;
+}
+
+.btn-osu-big--account-edit {
+  --bg: hsl(var(--hsl-h2));
+  --hover-bg: hsl(var(--hsl-h1));
+  --colour: hsl(var(--hsl-c1));
+  background: var(--bg);
+  color: var(--colour);
+  border: none;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 128px;
+  width: 128px;
+  height: 34px;
+  padding: 7px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+  box-sizing: border-box;
+  text-decoration: none;
+}
+
+.btn-osu-big--account-edit:hover {
+  background: var(--hover-bg);
+  color: #ffffff;
+}
+
+.btn-osu-big--account-edit-small {
+  min-width: 70px;
+  width: auto;
+  padding: 4px 10px;
+  height: 28px;
+  font-size: 12px;
+}
+
+.btn-osu-big--action {
+  width: auto;
+  min-width: 128px;
+  padding: 7px 14px;
+}
+
+.btn-osu-big--secondary {
+  --bg: rgba(255, 255, 255, 0.08);
+  --hover-bg: rgba(255, 255, 255, 0.15);
+  --colour: #d0c9dc;
+}
+
+.btn-osu-big__content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+}
+
+.btn-osu-big__left {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: left;
+}
+
+.btn-osu-big__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 120%;
+}
+
+.account-edit-status {
+  margin-left: 10px;
+  display: flex;
+  align-items: center;
+  font-weight: 700;
+  min-height: 24px;
+}
+
+.account-edit-status__content {
+  opacity: 0;
+  padding-right: 10px;
+  font-size: 13px;
+  transition: opacity 120ms ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.account-edit-status__content--saved {
+  color: #88b300;
+}
+
+[data-account-edit-state="saved"] .account-edit-status__content--saved,
+.account-edit-status__content--saved[id]:not([hidden]) {
+  opacity: 1;
+}
+
+.account-edit-status__content--saving {
+  position: absolute;
+  color: hsl(var(--hsl-l1));
+}
+
+[data-account-edit-state="saving"] .account-edit-status__content--saving {
+  opacity: 1;
+}
+
+.account-edit-entry__avatar {
+  border-radius: 4px;
+  width: 128px;
+  height: 128px;
+  margin-bottom: 10px;
+  overflow: hidden;
+  transform: translateZ(0);
+  position: relative;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  background-color: hsl(var(--hsl-b3));
+}
+
+.account-edit-entry__drop-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 10px;
+  box-sizing: border-box;
+  background-color: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 120ms ease;
+  pointer-events: none;
+}
+
+.js-account-edit-avatar--hover .account-edit-entry__drop-overlay {
+  opacity: 1;
+}
+
+.account-edit-entry__overlay-spinner {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 24px;
+}
+
+.js-account-edit-avatar--saving .account-edit-entry__overlay-spinner {
+  display: flex;
+}
+
+.account-edit-entry__rules {
+  margin-top: 10px;
+  font-size: 12px;
+  color: hsl(var(--hsl-f1));
+  line-height: 1.45;
+  max-width: 480px;
+}
+
+.account-edit-entry__rules a {
+  color: hsl(var(--hsl-l1));
+  text-decoration: none;
+}
+
+.account-edit-entry__rules a:hover {
+  text-decoration: underline;
+}
+
+.account-edit-entry__checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  align-items: center;
+}
+
+.account-edit-entry__checkboxes-label {
+  margin-bottom: 8px;
+  font-weight: 700;
+  color: hsl(var(--hsl-f1));
+  width: 100%;
+}
+
+.account-edit-entry__checkbox {
+  margin: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  user-select: none;
+}
+
+.account-edit-entry__checkbox-label {
+  font-weight: 600;
+  font-size: 13px;
+  color: #ffffff;
+}
+
+.account-edit-entry__misc-info--signature-preview {
+  background-color: hsl(var(--hsl-b3));
+  border-radius: 4px;
+  padding: 12px 16px;
+  min-height: 40px;
+  max-height: 150px;
+  overflow-y: auto;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  margin-bottom: 8px;
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.account-edit-entry--wide textarea.account-edit-entry__input {
+  height: 130px;
+  resize: vertical;
+  width: 100%;
+  max-width: 100%;
+  border-radius: 4px 4px 0 0;
+}
+
+.bbcode-toolbar {
+  background-color: hsl(var(--hsl-b2));
+  border-radius: 0 0 4px 4px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.bbcode-toolbar__btn {
+  background: none;
+  border: none;
+  color: #ffffff;
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-size: 12px;
+  cursor: pointer;
+  min-width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.85;
+  transition: opacity 120ms ease;
+}
+
+.bbcode-toolbar__btn:hover {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.bbcode-select {
+  background-color: hsl(var(--hsl-b3));
+  border: none;
+  border-radius: 3px;
+  color: #ffffff;
+  padding: 2px 6px;
+  font-size: 11px;
+  cursor: pointer;
+  height: 22px;
+}
+
+.bbcode-toolbar__help {
+  margin-left: auto;
+  color: hsl(var(--hsl-f1));
+  font-size: 12px;
+  text-decoration: none;
+  padding: 2px 6px;
+}
+
+.bbcode-toolbar__help:hover {
+  color: #ffffff;
+  text-decoration: underline;
+}
+
+.user-session-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.user-session-list-session {
+  background-color: hsl(var(--hsl-b3));
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  padding: 10px 14px;
+  margin-bottom: 6px;
+}
+
+.user-session-list-session__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  color: white;
+}
+
+.user-session-list-session__current-badge {
+  background: hsl(var(--hsl-b6));
+  padding: 2px 8px;
+  border-radius: 13px;
+  color: #88b300;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-left: 5px;
+}
+
+.user-session-list-session__icon {
+  width: 20px;
+  text-align: center;
+  color: hsl(var(--hsl-l1));
+}
+
+.user-session-list-session__details {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: hsl(var(--hsl-f1));
+  padding-top: 4px;
+}
+
+.settings-status-banner {
+  padding: 12px 18px;
+  border-radius: 4px;
+  margin: 0 0 16px 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.settings-status-banner.error {
+  background-color: #3b171f;
+  border: 1px solid #75222f;
+  color: #ff9ca7;
+}
+
+.settings-status-banner.success {
+  background-color: #173620;
+  border: 1px solid #236939;
+  color: #83f5a5;
+}
+
+.section-order-list {
+  max-width: 440px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.section-order-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: hsl(var(--hsl-b3));
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+  padding: 8px 14px;
+  color: #ffffff;
+  font-size: 13px;
+}
+
+.section-order-row span {
+  font-weight: 600;
+}
+
+.section-order-row button {
+  background-color: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #ccc;
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+}
+
+.section-order-row button:hover:not(:disabled) {
+  background-color: hsl(var(--hsl-h2));
+  color: #fff;
+}
+
+.section-order-row button:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.settings-inline-action {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  max-width: 500px;
+}
+
+.settings-inline-action .account-edit-entry__input {
+  flex: 1;
+}
+
+.account-edit-entry__checkboxes--vertical {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.account-edit-entry__checkbox--no-wrap {
+  flex-wrap: nowrap;
+}
+
+@media (max-width: 899px) {
+  .account-edit {
+    flex-direction: column;
+  }
+  .account-edit__section {
+    width: 100%;
+    padding: 16px 18px 8px;
+  }
+  .account-edit-entry {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .account-edit-entry__label {
+    width: 100%;
+    text-align: left;
+    padding-bottom: 4px;
+  }
+  .account-edit-entry--block,
+  .account-edit-entry--no-label {
+    padding-left: 0;
+  }
+  .account-edit-entry__input,
+  .settings-username-edit,
+  .section-order-list,
+  .settings-inline-action {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+dialog.settings-dialog{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;border:0;overflow-y:auto;background:hsl(var(--hsl-b6));color:#fff}
+dialog.settings-dialog:not([open]){display:none}
+dialog.settings-dialog::backdrop{background:hsl(var(--hsl-b6))}
+.settings-dialog .settings-page{padding-bottom:90px}
+.settings-dialog .header-v4--settings{display:block}
+.settings-dialog .header-v4__row--title{position:relative}
+.settings-close{position:absolute;right:0;top:50%;transform:translateY(-50%);width:36px;height:36px;border:0;border-radius:50%;background:rgba(255,255,255,.12);color:#fff;font-size:22px;line-height:1;cursor:pointer}
+.settings-close:hover{background:rgba(255,255,255,.25)}
+.settings-dialog button.header-nav-v4__link{background:none;border:0;padding-left:0;padding-right:0;font:inherit;color:inherit;cursor:pointer}
+.settings-savebar{position:fixed;left:0;right:0;bottom:0;z-index:5;display:flex;align-items:center;justify-content:flex-end;gap:16px;padding:12px 24px;background:hsl(var(--hsl-b5));box-shadow:0 -2px 12px rgba(0,0,0,.4)}
+.settings-savebar #settings-error{margin:0;color:#ff6b8a;font-size:13px}
+.settings-dialog .cover-editor__preview{width:100%;max-width:440px;height:88px;margin-bottom:12px;border-radius:6px;background:hsl(var(--hsl-b4)) center/cover no-repeat}
+.settings-dialog .settings-inline-action{display:flex;gap:8px;max-width:440px}
+.settings-dialog .account-edit-entry__input{color:#fff}
+.settings-dialog select.account-edit-entry__input option{color:#000}
+.settings-dialog textarea.account-edit-entry__input{width:100%;box-sizing:border-box;resize:vertical;min-height:140px}
+.settings-dialog .account-edit-entry--wide .account-edit-entry__input{max-width:440px}
+.settings-dialog #settings-sec-signature .account-edit-entry--wide .account-edit-entry__input{max-width:none}
+.settings-dialog .import-status{margin:0;font-size:13px}
+.settings-dialog .section-order-list>*{margin-bottom:6px}
+.settings-dialog code{font-size:11px}
+body:has(dialog.settings-dialog[open]){overflow:hidden}
+.settings-dialog .cover-editor__preview{outline:1px dashed rgba(255,255,255,.18)}

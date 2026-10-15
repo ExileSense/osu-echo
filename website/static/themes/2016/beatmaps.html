@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=1080, user-scalable=yes">
+<title>Beatmap Listing</title>
+<link rel="stylesheet" href="/site/static/themes/2016/css/main.css?v=1">
+<link rel="stylesheet" href="/site/static/themes/2016/lib/font-awesome.min.css">
+<link rel="stylesheet" href="/site/static/themes/2016/css/user.css?v=1">
+<link rel="stylesheet" href="/site/static/themes/2016/lib/nv.d3.min.css">
+<link rel="stylesheet" href="/site/static/themes/2016/flags.css?v=1">
+<link rel="stylesheet" href="/site/static/themes/2016/2016.css?v=1">
+<script src="/site/static/themepicker.js?v=1" defer></script>
+</head>
+<body id="titanic" class="theme-2016 t16-bm">
+<div class="main">
+  <a href="/" aria-label="osu!"><img src="/site/static/themes/2016/images/logo/head-logo.png" class="logo" width="140" height="140" alt=""></a>
+  <div class="nav"><ul class="nav-list"><li class="nav-element"><a href="/">Home</a></li><li class="nav-element"><a href="https://osu.ppy.sh/home/download" target="_blank" rel="noreferrer">Download</a></li><li class="nav-element nav-element-dropdown"><a href="/beatmapsets">Beatmaps <img class="dropdown-indicator" src="/site/static/themes/2016/images/arrow-white-highlight.png" alt="&raquo;"></a><ul class="nav-dropdown"><li><a href="/beatmapsets">Ranked</a><a href="https://osu.ppy.sh/beatmaps/packs" target="_blank" rel="noreferrer">Beatmap Packs</a></li></ul></li><li class="nav-element nav-element-dropdown"><a href="https://osu.ppy.sh/rankings/osu/performance" target="_blank" rel="noreferrer">Rankings <img class="dropdown-indicator" src="/site/static/themes/2016/images/arrow-white-highlight.png" alt="&raquo;"></a><ul class="nav-dropdown"><li><a href="https://osu.ppy.sh/rankings/osu/performance" target="_blank" rel="noreferrer">Performance</a><a href="https://osu.ppy.sh/rankings/osu/country" target="_blank" rel="noreferrer">Countries</a><a href="https://osu.ppy.sh/rankings/osu/score" target="_blank" rel="noreferrer">Score</a><a href="https://osu.ppy.sh/p/kudosu" target="_blank" rel="noreferrer">Kudosu</a></li></ul></li><li class="nav-element nav-element-dropdown"><a href="https://osu.ppy.sh/community/forums" target="_blank" rel="noreferrer">Community <img class="dropdown-indicator" src="/site/static/themes/2016/images/arrow-white-highlight.png" alt="&raquo;"></a><ul class="nav-dropdown"><li><a href="https://osu.ppy.sh/community/forums" target="_blank" rel="noreferrer">Forums</a><a href="https://osu.ppy.sh/community/chat" target="_blank" rel="noreferrer">Chat</a><a href="https://osu.ppy.sh/wiki/Welcome" target="_blank" rel="noreferrer">Wiki</a><a href="https://osu.ppy.sh/wiki/Rules" target="_blank" rel="noreferrer">Rules</a></li></ul></li></ul></div>
+  <div class="bancho-stats" id="t16-stats">Local osu! server<br>&nbsp;</div>
+  <div class="content">
+    <div class="top">
+      <div class="search-container">
+        <form class="search-form" id="t16-user-search"><input class="nav-search" type="text" id="user-search" name="users" placeholder="User" autocomplete="off"></form>
+        <form class="search-form" id="t16-map-search"><input class="nav-search" type="text" id="beatmap-search" name="beatmaps" placeholder="Beatmap" autocomplete="off"></form>
+      </div>
+      <div class="login-container" id="t16-login"></div>
+    </div>
+    <div class="page" id="t16-page"><div id="t16-msg" style="padding:30px;text-align:center">Loading...</div></div>
+    <div style="clear:both"></div>
+    <div class="gradient"></div>
+    <div class="local-footer">Independent local osu! server. Navigation links open the official osu! website.</div>
+  </div>
+</div>
+<script src="/site/static/bbcode.js?v=1" defer></script>
+<script src="/site/static/themes/2016/beatmaps16.js?v=1" defer></script>
+</body></html>

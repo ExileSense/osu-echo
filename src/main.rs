@@ -1,0 +1,625 @@
+#![allow(dead_code)]
+
+mod commands;
+mod console;
+mod db;
+mod handlers;
+mod ladder;
+mod osu_api;
+mod logger;
+mod packets;
+mod pp_era;
+mod server;
+mod state;
+mod types;
+mod utils;
+
+use crate::console::TraceSend;
+use colored::Colorize;
+use http_body_util::BodyExt;
+use hyper::server::conn::http1;
+use hyper::service::service_fn;
+use hyper_util::rt::TokioIo;
+use std::io::Write;
+use std::net::SocketAddr;
+use std::sync::Arc;
+use tokio::net::TcpListener;
+use tokio::sync::RwLock;
+
+use server::response::Response;
+use server::router::{match_route, RouteMatch};
+use state::AppState;
+
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+pub const LOGO: &str = r#"                      ,───.                             
+                      │   │            ,──.             
+ ,───.  ,───. ,──.,──.│  .',───.  ,───.│  ,───.  ,───.  
+│ .─. │(  .─' │  ││  ││  ││ .─. :│ .──'│  .─.  ││ .─. │ 
+' '─' '.─'  `)'  ''  '`──'╲   ──.╲ `──.│  │ │  │' '─' ' 
+ `───' `────'  `────' .──. `────' `───'`──' `──' `───'  
+                      '──'     "#;
+
+pub fn clear_console() {
+    let mut stdout = std::io::stdout();
+    let _ = crossterm::execute!(
+        stdout,
+        crossterm::terminal::Clear(crossterm::terminal::ClearType::All),
+        crossterm::terminal::Clear(crossterm::terminal::ClearType::Purge),
+        crossterm::cursor::MoveTo(0, 0)
+    );
+    print!("\x1B[2J\x1B[3J\x1B[H");
+    let _ = stdout.flush();
+}
+
+fn print_banner() {
+    println!("\n{}", LOGO.magenta().bold());
+    println!("  Welcome to {} v{}", "osu-echo".magenta().bold(), VERSION);
+    println!("  {}\n", "A local osu! server written in Rust".dimmed());
+}
+
+fn print_help() {
+    print_banner();
+    println!("Usage: osu-echo [OPTIONS]\n");
+    println!("Options:");
+    println!("  -h, --help           Print help information");
+    println!("  -v, --version        Print version information");
+    println!("  -d, --debug          Enable verbose debug logging (or hold Shift when starting)");
+    println!("  -s, --setup          Run or re-run the interactive setup wizard");
+    println!("      --reconfigure    Alias for --setup");
+    println!("      --trust-cert     Install and trust the local TLS certificate in Windows Root store");
+}
+
+#[cfg(target_os = "windows")]
+fn is_shift_pressed() -> bool {
+    #[link(name = "user32")]
+    extern "system" {
+        fn GetAsyncKeyState(vKey: i32) -> i16;
+    }
+    const VK_SHIFT: i32 = 0x10;
+    unsafe { (GetAsyncKeyState(VK_SHIFT) as u16 & 0x8000) != 0 }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn is_shift_pressed() -> bool {
+    false
+}
+
+#[cfg(target_os = "windows")]
+fn is_launched_from_explorer() -> bool {
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn GetConsoleProcessList(process_list: *mut u32, count: u32) -> u32;
+    }
+    let mut pids = [0u32; 2];
+    let count = unsafe { GetConsoleProcessList(pids.as_mut_ptr(), 2) };
+    count <= 1
+}
+
+#[cfg(not(target_os = "windows"))]
+fn is_launched_from_explorer() -> bool {
+    false
+}
+
+fn pause_if_double_clicked() {
+    if is_launched_from_explorer() {
+        println!("\nPress Enter to exit...");
+        let mut buffer = String::new();
+        let _ = std::io::stdin().read_line(&mut buffer);
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    if let Err(e) = run().await {
+        logger::error(&format!("Fatal error: {}", e));
+        pause_if_double_clicked();
+        std::process::exit(1);
+    }
+}
+
+async fn run() -> Result<(), Box<dyn std::error::Error>> {
+    console::init();
+    let args: Vec<String> = std::env::args().collect();
+
+    if args.iter().any(|arg| arg == "-h" || arg == "--help") {
+        print_help();
+        return Ok(());
+    }
+
+    if args.iter().any(|arg| arg == "-v" || arg == "--version") {
+        println!("osu-echo v{}", VERSION);
+        return Ok(());
+    }
+
+    let force_setup = args.iter().any(|arg| arg == "-s" || arg == "--setup" || arg == "--reconfigure");
+
+    dotenvy::dotenv().ok();
+
+    let shift_held = is_shift_pressed();
+    let debug_cli = args.iter().any(|arg| arg == "-d" || arg == "--debug" || arg == "--verbose");
+    let debug_env = std::env::var("DEBUG").map(|v| v == "1" || v.eq_ignore_ascii_case("true")).unwrap_or(false)
+        || std::env::var("VERBOSE").map(|v| v == "1" || v.eq_ignore_ascii_case("true")).unwrap_or(false);
+
+    let debug_enabled = shift_held || debug_cli || debug_env;
+    if debug_enabled {
+        logger::set_debug(true);
+    }
+
+    let log_debug_info = || {
+        if logger::is_debug() {
+            let reason = if shift_held {
+                "Shift key held at startup"
+            } else if debug_cli {
+                "CLI flag"
+            } else {
+                "DEBUG/VERBOSE environment variable"
+            };
+            logger::info(&format!("Verbose debug logging enabled (via {}).", reason));
+        }
+    };
+
+    let data_dir = std::env::current_dir()?.join(".data");
+    std::fs::create_dir_all(&data_dir)?;
+
+    let db_path = data_dir.join("server.db");
+    let conn = rusqlite::Connection::open(&db_path)?;
+    db::init_db(&conn)?;
+    osu_api::load_bonuses(&conn);
+
+    let mut first_run = false;
+    let mut config = match (force_setup, db::load_config(&conn)?) {
+        (false, Some(config)) => {
+            print_banner();
+            log_debug_info();
+            logger::info("Found existing server configuration.");
+            config
+        }
+        _ => {
+            first_run = true;
+            types::config::ensure_data_folders(&data_dir);
+            let config = types::config::fresh_config();
+            if !std::path::Path::new(".env").exists() {
+                let _ = types::config::write_dotenv_full(Some("127.0.0.1"), Some(5000), None, None, None, None, None, None, None, None, None, None, None);
+            }
+            db::save_config(&conn, &config)?;
+            let _ = db::set_setup_state(&conn, true, 1);
+            dotenvy::from_filename(".env").ok();
+            dotenvy::dotenv().ok();
+            #[cfg(target_os = "windows")]
+            {
+                logger::info("First start: setting up osu.localhost (hosts file + local certificate). Windows will ask for administrator permission - please accept it.");
+                match types::config::install_local_trust(&data_dir) {
+                    Ok(m) => logger::info(&m),
+                    Err(e) => logger::warn(&e),
+                }
+            }
+            print_banner();
+            log_debug_info();
+            logger::info("First start detected - finish the setup in your browser: http://osu.localhost/admin");
+            config
+        }
+    };
+
+    config.apply_env_overrides();
+
+    if let Some(ref replay_folder) = config.replay_folder() {
+        std::fs::create_dir_all(replay_folder).ok();
+    }
+
+    let mut app_state = AppState::new(conn, config.clone());
+
+    commands::register_commands(&mut app_state);
+
+    let shared_state: state::SharedState = Arc::new(RwLock::new(app_state));
+
+    let avatar_http = {
+        let s = shared_state.read().await;
+        s.http.clone()
+    };
+    ladder::init();
+    osu_api::init();
+    ladder::spawn_refresher(avatar_http.clone());
+    let state_avatar = shared_state.clone();
+    tokio::spawn(async move {
+        let req = avatar_http
+            .get("https://a.ppy.sh/")
+            .timeout(std::time::Duration::from_secs(2));
+        if let Ok(resp) = req.send_traced().await {
+            if resp.status() == 200 {
+                if let Ok(bytes) = resp.bytes().await {
+                    let mut s = state_avatar.write().await;
+                    s.default_avatar = bytes.to_vec();
+                }
+            }
+        }
+    });
+
+    tokio::spawn(handlers::discord_bot::run(shared_state.clone()));
+
+    if let Some(replay_folder) = config.replay_folder() {
+        let state_clone = shared_state.clone();
+        tokio::spawn(async move {
+            watch_replay_folder(state_clone, replay_folder).await;
+        });
+    }
+
+    let tls_paths = server::tls::get_or_create_certificates(&data_dir);
+    if std::env::args().any(|arg| arg == "--trust-cert") {
+        if let Ok(ref paths) = tls_paths {
+            let _ = server::tls::install_windows_trust(&paths.cert_der);
+        }
+        #[cfg(target_os = "windows")]
+        let _ = server::tls::setup_windows_hosts();
+    }
+
+    if let Ok(ref paths) = tls_paths {
+        #[cfg(target_os = "windows")]
+        let _ = server::tls::setup_windows_hosts();
+
+        if let Ok(acceptor) = server::tls::create_tls_acceptor(&paths.cert_pem, &paths.key_pem) {
+            let https_state = shared_state.clone();
+            tokio::spawn(async move {
+                match TcpListener::bind("127.0.0.1:443").await {
+                    Ok(listener) => {
+                        logger::success("Direct HTTPS server listening on https://127.0.0.1:443 (for -devserver localhost)");
+                        loop {
+                            let (stream, _) = match listener.accept().await {
+                                Ok(s) => s,
+                                Err(_) => continue,
+                            };
+                            let acceptor = acceptor.clone();
+                            let state = https_state.clone();
+
+                            tokio::task::spawn(async move {
+                                let tls_stream = match acceptor.accept(stream).await {
+                                    Ok(s) => s,
+                                    Err(e) => {
+                                        if logger::is_debug() {
+                                            logger::debug(&format!("Port 443 TLS handshake error: {}", e));
+                                        }
+                                        return;
+                                    }
+                                };
+                                let io = TokioIo::new(tls_stream);
+                                let service = service_fn(move |req| {
+                                    let state = state.clone();
+                                    async move {
+                                        let resp = handle_request(state, req).await;
+                                        Ok::<_, hyper::Error>(resp.into_hyper_response())
+                                    }
+                                });
+
+                                let _ = http1::Builder::new().serve_connection(io, service).await;
+                            });
+                        }
+                    }
+                    Err(e) => {
+                        if e.kind() == std::io::ErrorKind::AddrInUse {
+                            logger::warn("Port 443 is already in use. Direct HTTPS is disabled; port 5000 is still available.");
+                        } else {
+                            logger::warn(&format!("Could not bind port 443 for HTTPS ({}). Port 5000 is still available.", e));
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    tokio::spawn(server::tcp_bancho::run(shared_state.clone()));
+
+    let http80_state = shared_state.clone();
+    tokio::spawn(async move {
+        match TcpListener::bind("127.0.0.1:80").await {
+            Ok(listener) => {
+                logger::success("Direct HTTP server listening on http://127.0.0.1:80 (for -devserver localhost)");
+                loop {
+                    let (stream, _) = match listener.accept().await {
+                        Ok(s) => s,
+                        Err(_) => continue,
+                    };
+                    let io = TokioIo::new(stream);
+                    let state = http80_state.clone();
+                    let service = service_fn(move |req| {
+                        let state = state.clone();
+                        async move {
+                            let resp = handle_request(state, req).await;
+                            Ok::<_, hyper::Error>(resp.into_hyper_response())
+                        }
+                    });
+
+                    tokio::task::spawn(async move {
+                        let _ = http1::Builder::new().serve_connection(io, service).await;
+                    });
+                }
+            }
+            Err(e) => {
+                if e.kind() == std::io::ErrorKind::AddrInUse {
+                    logger::info("Port 80 is already in use. Direct HTTP is disabled; port 5000 is still available.");
+                } else {
+                    logger::info(&format!("Could not bind port 80 ({}). Port 5000 is still available.", e));
+                }
+            }
+        }
+    });
+
+    let host = std::env::var("SERVER_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+    let port = std::env::var("SERVER_PORT").ok().and_then(|p| p.parse::<u16>().ok()).unwrap_or(5000);
+    let addr: SocketAddr = match format!("{}:{}", host, port).parse() {
+        Ok(a) => a,
+        Err(e) => {
+            logger::error(&format!("Invalid SERVER_HOST or SERVER_PORT ({}:{}): {}", host, port, e));
+            pause_if_double_clicked();
+            return Ok(());
+        }
+    };
+
+    let listener = match TcpListener::bind(addr).await {
+        Ok(l) => l,
+        Err(e) => {
+            if e.kind() == std::io::ErrorKind::AddrInUse {
+                logger::error(&format!("Port {} is already in use. Is another instance of osu-echo already running?", port));
+            } else {
+                logger::error(&format!("Failed to bind server on {}: {}", addr, e));
+            }
+            pause_if_double_clicked();
+            return Ok(());
+        }
+    };
+
+    logger::success(&format!("Server listening on http://{}", addr));
+    logger::info(&format!("osu-echo version: v{}", VERSION));
+    if first_run {
+        let site = if server::tls::hosts_ready() { "osu.localhost" } else { "localhost" };
+        types::config::open_in_browser(&format!("http://{}:{}/admin", site, port));
+        logger::info("If the website does not load, reload the page with CTRL + F5.");
+    }
+
+    tokio::select! {
+        _ = async {
+            loop {
+                let (stream, _) = match listener.accept().await {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        logger::error(&format!("Accept error: {}", e));
+                        continue;
+                    }
+                };
+                let io = TokioIo::new(stream);
+                let state = shared_state.clone();
+
+                tokio::task::spawn(async move {
+                    let service = service_fn(move |req| {
+                        let state = state.clone();
+                        async move {
+                            let resp = handle_request(state, req).await;
+                            Ok::<_, hyper::Error>(resp.into_hyper_response())
+                        }
+                    });
+
+                    if let Err(e) = http1::Builder::new().serve_connection(io, service).await {
+                        if !e.is_incomplete_message() {
+                            logger::error(&format!("Connection error: {}", e));
+                        }
+                    }
+                });
+            }
+        } => {},
+        _ = tokio::signal::ctrl_c() => {
+            logger::info("Shutdown signal received. Shutting down...");
+        }
+    }
+
+    {
+        let s = shared_state.read().await;
+        let db = s.db.lock().await;
+        let _ = db.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);");
+    }
+    logger::success("Server stopped cleanly.");
+
+    Ok(())
+}
+
+async fn handle_request(state: state::SharedState, req: hyper::Request<hyper::body::Incoming>) -> Response {
+    let start_time = std::time::Instant::now();
+    let (parts, incoming_body) = req.into_parts();
+    let method = parts.method;
+    let uri = parts.uri;
+    let headers = parts.headers;
+    let path = uri.path().to_string();
+    let query_str = uri.query().unwrap_or("");
+
+    let body_bytes = match incoming_body.collect().await {
+        Ok(collected) => collected.to_bytes(),
+        Err(_) => bytes::Bytes::new(),
+    };
+
+    let params = utils::parse_query_string(query_str);
+
+    let cookie_header = headers.get("cookie").and_then(|v| v.to_str().ok()).map(String::from);
+    let osu_token = headers.get("osu-token").and_then(|v| v.to_str().ok()).map(String::from);
+
+    let host = headers.get("host").and_then(|v| v.to_str().ok()).unwrap_or("localhost").split(':').next().unwrap_or("localhost").to_lowercase();
+
+    if logger::is_debug() {
+        let q = if query_str.is_empty() { String::new() } else { format!("?{}", query_str) };
+        let token_info = match &osu_token {
+            Some(t) => format!(", token: {}", t),
+            None => String::new(),
+        };
+        logger::debug(&format!("Incoming HTTP {:<4} {}{} [host: {}{}, body: {}B]", method, path, q, host, token_info, body_bytes.len()));
+    }
+
+    let normalized_path = match host.as_str() {
+        "c.localhost" | "c4.localhost" | "c5.localhost" | "c6.localhost" | "ce.localhost" => {
+            if path.starts_with("/c") {
+                path.clone()
+            } else {
+                format!("/c{}", path)
+            }
+        }
+        "osu.localhost" => {
+            if path.starts_with("/site")
+                || path == "/"
+                || path == "/profile"
+                || path == "/profile/"
+                || path.starts_with("/u/")
+                || path.starts_with("/users/")
+                || path == "/favicon.ico"
+            {
+                path.clone()
+            } else if path.starts_with("/osu") {
+                path.clone()
+            } else {
+                format!("/osu{}", path)
+            }
+        }
+        "a.localhost" => {
+            if path.starts_with("/a") {
+                path.clone()
+            } else {
+                format!("/a{}", path)
+            }
+        }
+        "assets.localhost" => {
+            if path.starts_with("/assets") {
+                path.clone()
+            } else {
+                format!("/assets{}", path)
+            }
+        }
+        "b.localhost" => {
+            if path.starts_with("/b") {
+                path.clone()
+            } else {
+                format!("/b{}", path)
+            }
+        }
+        _ => path.clone(),
+    };
+
+    let route = match_route(&normalized_path, &params);
+
+    let resp = match route {
+        RouteMatch::UserProfileWeb => server::assets::serve_index(cookie_header.as_deref()),
+        RouteMatch::Admin if is_local_host(&host) => server::assets::serve_asset("admin.html").with_header("Cache-Control", "no-store"),
+        RouteMatch::Admin => Response::not_found(),
+        RouteMatch::Home => server::assets::serve_home(cookie_header.as_deref()),
+        RouteMatch::WebStatic(sub_path) => server::assets::serve_asset(&sub_path),
+        RouteMatch::WebApi(action) if action.starts_with("admin/") => {
+            if is_local_host(&host) {
+                handlers::admin::handle(state, &action, &params, &method, &headers, &body_bytes).await
+            } else {
+                Response::not_found()
+            }
+        }
+        RouteMatch::WebApi(action) if action == "themes" => server::assets::serve_themes(cookie_header.as_deref()),
+        RouteMatch::WebApi(action) => {
+            handlers::website::handle(state, &action, &params, &method, &headers, &body_bytes).await
+        }
+        RouteMatch::Status => {
+            server::assets::serve_index(cookie_header.as_deref())
+        }
+        RouteMatch::Favicon => Response::no_content().with_header("Content-Type", "image/x-icon"),
+        RouteMatch::Cho => handlers::cho::handle(state, osu_token.as_deref(), &body_bytes).await,
+        RouteMatch::Web(sub_path) => handlers::web::handle(state, &sub_path, &params, &method, &headers, &body_bytes).await,
+        RouteMatch::Avatar(userid) => handlers::avatar::handle(state, userid).await,
+        RouteMatch::Api(sub_path) => handlers::api::handle(state, &sub_path, &params).await,
+        RouteMatch::Download(setid, no_video) => handlers::web::handle_download(state, setid, no_video).await,
+        RouteMatch::Thumbnail(filename) => handlers::web::handle_thumbnail(state, &filename).await,
+        RouteMatch::Preview(filename) => handlers::web::handle_preview(state, &filename).await,
+        RouteMatch::Asset(sub_path) => handlers::web::handle_asset(state, &sub_path).await,
+        RouteMatch::BeatmapListing | RouteMatch::BeatmapSetPage | RouteMatch::ScorePage => server::assets::serve_themed(cookie_header.as_deref(), "beatmaps.html"),
+        RouteMatch::FriendsPage => server::assets::serve_themed(cookie_header.as_deref(), "friends.html"),
+        RouteMatch::LocalRedirect(target) => Response::redirect(&target),
+        RouteMatch::BeatmapWeb(full_path) => Response::redirect(&format!("https://osu.ppy.sh{}", full_path)),
+        RouteMatch::Screenshot(link) => Response::redirect(&link),
+        RouteMatch::NotFound => Response::not_found(),
+    };
+
+    logger::http_request(method.as_str(), &path, resp.status.as_u16(), start_time.elapsed());
+    resp
+}
+
+fn is_local_host(host: &str) -> bool {
+    matches!(host, "osu.localhost" | "localhost" | "127.0.0.1" | "[::1]" | "::1")
+}
+
+async fn watch_replay_folder(state: state::SharedState, replay_folder: std::path::PathBuf) {
+    if !replay_folder.exists() {
+        logger::error("Replay folder does not exist! Restart server after configuring path.");
+        return;
+    }
+
+    let mut last_changed =
+        replay_folder.metadata().map(|m| m.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH)).unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+
+    loop {
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+        {
+            let s = state.read().await;
+            if s.player.is_none() {
+                continue;
+            }
+        }
+
+        let current = replay_folder.metadata().map(|m| m.modified().unwrap_or(std::time::SystemTime::UNIX_EPOCH)).unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+
+        if current == last_changed {
+            continue;
+        }
+        last_changed = current;
+
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+        let latest_replay = match find_latest_replay(&replay_folder) {
+            Some(p) => p,
+            None => continue,
+        };
+
+        if logger::is_debug() {
+            logger::debug(&format!("Replay file detected: {}", latest_replay.display()));
+        }
+
+        if !latest_replay.exists() {
+            logger::warn("Replay file does not exist or was deleted.");
+            continue;
+        }
+
+        match types::Replay::from_file(&latest_replay) {
+            Ok(replay) => {
+                if logger::is_debug() {
+                    logger::debug(&format!(
+                        "Parsed replay: player={}, map_md5={}, score={}, combo={}",
+                        replay.player_name, replay.beatmap_md5, replay.total_score, replay.combo
+                    ));
+                }
+                let score = types::Score::from_replay(&replay);
+                handlers::score_submit::score_submit(state.clone(), score, &replay).await;
+            }
+            Err(e) => {
+                logger::error(&format!("Failed to parse replay file: {}", e));
+            }
+        }
+    }
+}
+
+fn find_latest_replay(folder: &std::path::Path) -> Option<std::path::PathBuf> {
+    let mut latest: Option<(std::path::PathBuf, std::time::SystemTime)> = None;
+
+    let entries = std::fs::read_dir(folder).ok()?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|e| e.to_str()) != Some("osr") {
+            continue;
+        }
+        let modified = entry.metadata().ok().and_then(|m| m.created().or_else(|_| m.modified()).ok()).unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+
+        if latest.as_ref().is_none_or(|(_, t)| modified > *t) {
+            latest = Some((path, modified));
+        }
+    }
+
+    latest.map(|(p, _)| p)
+}

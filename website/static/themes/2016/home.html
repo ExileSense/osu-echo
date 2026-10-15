@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=1080, user-scalable=yes">
+<title>osu! · Local server</title>
+<link rel="stylesheet" href="/site/static/themes/2016/css/main.css?v=1">
+<link rel="stylesheet" href="/site/static/themes/2016/lib/font-awesome.min.css">
+<link rel="stylesheet" href="/site/static/themes/2016/css/user.css?v=1">
+<link rel="stylesheet" href="/site/static/themes/2016/lib/nv.d3.min.css">
+<link rel="stylesheet" href="/site/static/themes/2016/flags.css?v=1">
+<link rel="stylesheet" href="/site/static/themes/2016/2016.css?v=1">
+<link rel="stylesheet" href="/site/static/themes/2016/css/home.css?v=1">
+<link rel="stylesheet" href="/site/static/themes/2016/2016home.css?v=1">
+<script src="/site/static/themepicker.js?v=1" defer></script>
+</head>
+<body id="titanic" class="theme-2016 t16-home">
+<div class="main">
+  <a href="/" aria-label="osu!"><img src="/site/static/themes/2016/images/logo/head-logo.png" class="logo" width="140" height="140" alt=""></a>
+  <div class="nav"><ul class="nav-list"><li class="nav-element"><a href="/">Home</a></li><li class="nav-element"><a href="https://osu.ppy.sh/home/download" target="_blank" rel="noreferrer">Download</a></li><li class="nav-element nav-element-dropdown"><a href="/beatmapsets">Beatmaps <img class="dropdown-indicator" src="/site/static/themes/2016/images/arrow-white-highlight.png" alt="&raquo;"></a><ul class="nav-dropdown"><li><a href="/beatmapsets">Ranked</a><a href="https://osu.ppy.sh/beatmaps/packs" target="_blank" rel="noreferrer">Beatmap Packs</a></li></ul></li><li class="nav-element nav-element-dropdown"><a href="https://osu.ppy.sh/rankings/osu/performance" target="_blank" rel="noreferrer">Rankings <img class="dropdown-indicator" src="/site/static/themes/2016/images/arrow-white-highlight.png" alt="&raquo;"></a><ul class="nav-dropdown"><li><a href="https://osu.ppy.sh/rankings/osu/performance" target="_blank" rel="noreferrer">Performance</a><a href="https://osu.ppy.sh/rankings/osu/country" target="_blank" rel="noreferrer">Countries</a><a href="https://osu.ppy.sh/rankings/osu/score" target="_blank" rel="noreferrer">Score</a><a href="https://osu.ppy.sh/p/kudosu" target="_blank" rel="noreferrer">Kudosu</a></li></ul></li><li class="nav-element nav-element-dropdown"><a href="https://osu.ppy.sh/community/forums" target="_blank" rel="noreferrer">Community <img class="dropdown-indicator" src="/site/static/themes/2016/images/arrow-white-highlight.png" alt="&raquo;"></a><ul class="nav-dropdown"><li><a href="https://osu.ppy.sh/community/forums" target="_blank" rel="noreferrer">Forums</a><a href="https://osu.ppy.sh/community/chat" target="_blank" rel="noreferrer">Chat</a><a href="https://osu.ppy.sh/wiki/Welcome" target="_blank" rel="noreferrer">Wiki</a><a href="https://osu.ppy.sh/wiki/Rules" target="_blank" rel="noreferrer">Rules</a></li></ul></li></ul></div>
+  <div class="bancho-stats" id="t16-stats">Local osu! server<br>&nbsp;</div>
+  <div class="content">
+    <div class="top">
+      <div class="search-container">
+        <form class="search-form" id="t16-user-search"><input class="nav-search" type="text" id="user-search" name="users" placeholder="User" autocomplete="off"></form>
+        <form class="search-form" id="t16-map-search"><input class="nav-search" type="text" id="beatmap-search" name="beatmaps" placeholder="Beatmap" autocomplete="off"></form>
+      </div>
+      <div class="login-container" id="t16-login"></div>
+    </div>
+    <div class="page">
+      <div class="content-wrapper">
+        <div class="left-side">
+          <div class="about-wrapper"><div class="blurb-box">
+            <h1 class="blurb-text" id="about-header"><b>osu!</b> is a <b>free-to-win</b> online rhythm game</h1>
+            <div class="blurb-text">This is your own local osu! server. Play beatmaps with your own client, keep your scores and profiles on your machine, and browse them here on a website that looks the way osu! used to. Use the search above to find a profile, or sign in to open yours.</div>
+          </div></div>
+          <div class="news-wrapper"><h2 class="headers">News</h2>
+            <div class="news"><div class="blurb-box">No news available at the moment.</div></div>
+          </div>
+        </div>
+        <div class="right-side">
+          <div class="t16-buttons"><a class="t16-btn t16-btn-dl" href="https://osu.ppy.sh/home/download" target="_blank" rel="noreferrer"><span class="t16-btn-top">DOWNLOAD OSU!</span><span class="t16-btn-sub">Start your own rhythmical adventure today!</span></a><a class="t16-btn t16-btn-goodies" href="https://osu.ppy.sh/home/support" target="_blank" rel="noreferrer"><span class="t16-btn-top">OSU! GOODIES</span><span class="t16-btn-sub">Share osu! goodness with shirts, hoodies, mugs and much more!</span></a><a class="t16-btn t16-btn-support" href="https://osu.ppy.sh/home/support" target="_blank" rel="noreferrer"><span class="t16-btn-top">SUPPORT OSU!</span><span class="t16-btn-sub">Become a subscriber and get many enhancements including in-game downloading.</span></a></div>
+          <div class="most-played" id="t16-most"><h2 class="headers">Most Played Beatmaps<span id="t16-most-sub"></span></h2>
+            <table class="styled-table"><thead><tr><th scope="col">Plays</th><th scope="col" style="text-align:center">Artist / Title</th><th scope="col">Creator</th></tr></thead><tbody id="t16-most-body"><tr class="row-dark"><td colspan="3">Loading...</td></tr></tbody></table>
+          </div>
+        </div>
+      </div>
+      <div style="clear:both"></div>
+    </div>
+    <div class="gradient"></div>
+    <div class="local-footer">Independent local osu! server. Navigation links open the official osu! website.<br>Change the site theme from the footer of any profile page.</div>
+  </div>
+</div>
+<script src="/site/static/themes/2016/2016home.js?v=1" defer></script>
+</body></html>

@@ -1,0 +1,50 @@
+#dash{display:none}
+html.home-loggedin body.home-page>*:not(#dash):not(.home-login-anchor){display:none!important}
+html.home-loggedin body.home-page{--base-hue-override:255;background:hsl(var(--hsl-b6))}
+html.home-loggedin{background:hsl(var(--hsl-b6))}
+html.home-loggedin #dash{display:block}
+#dash .header-v4{display:block;position:relative}
+.dash-top{position:absolute;top:0;left:0;right:0;z-index:3;background:linear-gradient(rgba(0,0,0,.45),rgba(0,0,0,0))}
+.dash-nav{max-width:1000px;margin:auto;height:80px;display:flex;align-items:center;gap:25px;padding:0 10px;box-sizing:border-box}
+.dash-logo{width:56px;height:56px;flex:none}.dash-logo img{width:100%;height:100%}
+.dash-links{display:flex;align-items:center;gap:20px;flex:1;flex-wrap:wrap}
+.dash-links a,.dash-icon{color:#fff;font-size:14px;font-weight:600;text-decoration:none}
+.dash-links a:hover,.dash-icon:hover{color:hsl(var(--hsl-h1))}
+.dash-right{display:flex;align-items:center;gap:16px}
+.dash-user{position:relative}
+.dash-avatar{border:0;padding:0;background:none;cursor:pointer;display:block}
+.dash-avatar img{height:40px;width:40px;border-radius:50%;object-fit:cover;background:hsl(var(--hsl-b4));display:block}
+.dash-menu{position:absolute;right:0;top:48px;min-width:180px;background:hsl(var(--hsl-b4));border-radius:6px;box-shadow:0 2px 10px rgba(0,0,0,.5);padding:6px 0;display:flex;flex-direction:column}
+.dash-menu[hidden]{display:none}
+.dash-menu__name{padding:8px 16px;font-weight:700;font-size:14px;border-bottom:1px solid hsl(var(--hsl-b2));margin-bottom:4px}
+.dash-menu a,.dash-menu button{background:none;border:0;color:#fff;text-align:left;padding:8px 16px;font:inherit;font-size:13px;text-decoration:none;cursor:pointer}
+.dash-menu a:hover,.dash-menu button:hover{background:hsl(var(--hsl-b3))}
+#dash .header-v4__container--main{min-height:0;padding-top:95px}
+#dash .header-v4__row--title{padding-bottom:6px}
+#dash .osu-page{margin-top:0;padding:10px 0 0;background:hsl(var(--hsl-b5));box-shadow:0 1px 3px rgba(0,0,0,.25)}
+#dash .menu-images{margin:0 0 20px}
+#dash .user-home{box-shadow:none}
+.dash-note{padding:14px 18px;font-size:13px;opacity:.7;line-height:1.4}
+.dash-note--side{padding:8px 0}
+.user-home__news .dash-note{padding-left:0}
+.user-home__beatmapsets>a:last-child:not(.user-home-beatmapset){display:block;padding:10px 20px;font-size:12px;color:hsl(var(--hsl-l1));text-decoration:none}
+.user-home__beatmapsets>a:last-child:not(.user-home-beatmapset):hover{color:#fff}
+.user-home__beatmap-list-header a{color:inherit;text-decoration:none}
+.user-home__beatmap-list-header .game-mode{margin-left:auto}
+.user-home__beatmap-list-header{display:flex;align-items:center}
+.user-home-beatmapset__playcount{margin-left:auto;padding-left:8px;white-space:nowrap}
+.user-home-beatmapset__creator{display:flex}
+.user-home-beatmapset__creator>span:first-child{overflow:hidden;text-overflow:ellipsis}
+.user-online-status__chart svg{display:block;width:100%;height:100%}
+.dash-graph-area{fill:hsl(var(--hsl-h1));opacity:.35;stroke:hsl(var(--hsl-h1));stroke-width:1.5}
+.menu-images__images{position:relative;overflow:hidden}
+#dash .header-v4--home .header-v4__icon{background-image:url(/site/static/vendor/home.03d09fb9.svg)}
+.dash-footer{margin-top:40px;padding:22px 10px 26px;text-align:center;background:hsl(var(--hsl-b6));font-size:12px}
+.dash-footer__links{display:flex;justify-content:center;flex-wrap:wrap;gap:6px 22px;font-weight:700}
+.dash-footer__links a{color:#fff;text-decoration:none}.dash-footer__links a:hover{color:hsl(var(--hsl-h1))}
+.dash-footer__powered{margin-top:8px;font-style:italic;font-weight:700;font-size:11px;opacity:.7}
+@media(max-width:899px){.dash-nav{height:auto;padding:12px 10px;flex-wrap:wrap}.dash-links{order:3;flex-basis:100%}}
+
+.dash-logo.nav2__logo-link{display:block;position:relative;width:70px;height:70px;margin:-5px;flex:none}
+:root{--current-user-cover:url(/site/static/vendor/generic@2x.ef7ea3b5.jpg)}
+:root{--nav-logo:url(/site/static/vendor/osu-logo-white.59d385da.svg);--nav-logo-bg:url(/site/static/vendor/osu-logo-triangles.b1e57c37.svg)}

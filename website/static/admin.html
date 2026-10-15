@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>admin | osu!</title>
+<link rel="stylesheet" href="/site/static/vendor/osu-web.css">
+<link rel="stylesheet" href="/site/static/admin.css?v=3">
+<script src="/site/static/admin.js?v=3" defer></script>
+</head>
+<body class="adm">
+<header class="adm-top">
+  <a class="adm-logo" href="/" aria-label="Back to site"><img src="/site/static/vendor/osu-logo-white.59d385da.svg" alt="osu!"></a>
+  <div class="adm-title"><span class="adm-title__main">admin</span><span class="adm-title__sub">local server control panel</span></div>
+  <div class="adm-top__right"><span class="adm-pill" id="adm-status" title="server connection">connecting…</span><a class="adm-btn" href="/">back to site</a></div>
+</header>
+
+<div class="adm-body">
+  <nav class="adm-side" id="adm-nav" aria-label="Admin sections">
+    <a href="#overview" class="adm-side__item" data-section="overview"><i class="fas fa-fw fa-tachometer-alt"></i><span>Overview</span></a>
+    <a href="#users" class="adm-side__item" data-section="users"><i class="fas fa-fw fa-users"></i><span>Manage Users</span></a>
+    <a href="#maps" class="adm-side__item" data-section="maps"><i class="fas fa-fw fa-music"></i><span>Manage Custom Ranked Beatmaps</span></a>
+    <a href="#keys" class="adm-side__item" data-section="keys"><i class="fas fa-fw fa-key"></i><span>Manage keys</span></a>
+    <a href="#console" class="adm-side__item" data-section="console"><i class="fas fa-fw fa-terminal"></i><span>Console</span></a>
+    <a href="#other" class="adm-side__item" data-section="other"><i class="fas fa-fw fa-ellipsis-h"></i><span>Other</span></a>
+  </nav>
+
+  <main class="adm-main" id="adm-main">
+
+    <section class="adm-section" data-section="overview" hidden>
+      <h1 class="adm-h1">Overview</h1>
+      <div class="adm-stack">
+        <div class="adm-panel">
+          <div class="adm-panel__title">Registered users</div>
+          <div class="adm-panel__body"><div class="adm-big" id="ov-users">—</div><div class="adm-sub">local profiles on this server</div></div>
+        </div>
+        <div class="adm-panel">
+          <div class="adm-panel__title">Uptime</div>
+          <div class="adm-panel__body"><div class="adm-big" id="ov-uptime">—</div><div class="adm-sub" id="ov-since">the service has been running since —</div></div>
+        </div>
+        <div class="adm-panel">
+          <div class="adm-panel__title">Scores submitted in the last 24 hours <span class="adm-count" id="ov-count"></span></div>
+          <div class="adm-panel__body adm-panel__body--flush" id="ov-scores"><div class="adm-empty">Loading…</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="adm-section" data-section="users" hidden>
+      <h1 class="adm-h1">Manage Users</h1>
+      <div class="adm-panel" id="us-add">
+        <div class="adm-panel__title">Add a user</div>
+        <div class="adm-panel__body">
+          <form class="adm-form" id="us-form">
+            <label>Choose a username<input type="text" id="us-new" maxlength="64" placeholder="your in-game name" autocomplete="off"></label>
+            <button class="adm-btn adm-btn--primary" type="submit">Create account</button>
+            <span class="adm-or">or</span>
+            <button class="adm-btn" id="us-import" type="button">Import a profile…</button>
+          </form>
+          <div class="adm-hint">Importing copies your official osu! profile, top scores and (optionally) leaderboard ranks into a new local account.</div>
+        </div>
+      </div>
+      <div class="adm-panel">
+        <div class="adm-panel__title">Users <span class="adm-count" id="us-count"></span></div>
+        <div class="adm-panel__body adm-panel__body--flush" id="us-list"><div class="adm-empty">Loading…</div></div>
+      </div>
+    </section>
+
+    <section class="adm-section" data-section="maps" hidden>
+      <h1 class="adm-h1">Manage Custom Ranked Beatmaps</h1>
+      <div class="adm-panel">
+        <div class="adm-panel__title">Set a map's status</div>
+        <div class="adm-panel__body">
+          <form class="adm-form" id="mp-form">
+            <label>Beatmap set ID<input type="number" min="1" id="mp-set" placeholder="e.g. 440423"></label>
+            <label>or beatmap ID<input type="number" min="1" id="mp-bid" placeholder="e.g. 950172"></label>
+            <label>Status<select id="mp-status"><option value="ranked">Ranked</option><option value="loved">Loved</option><option value="unranked">Unranked</option></select></label>
+            <button class="adm-btn adm-btn--primary" type="submit">Apply</button>
+          </form>
+          <div class="adm-hint">The same thing as !rank, !love and !unrank in-game. The map has to be in the local database (select it in osu! once).</div>
+        </div>
+      </div>
+      <div class="adm-panel">
+        <div class="adm-panel__title">Custom ranked / loved maps <span class="adm-count" id="mp-count"></span></div>
+        <div class="adm-panel__body adm-panel__body--flush" id="mp-list"><div class="adm-empty">Loading…</div></div>
+      </div>
+    </section>
+
+    <section class="adm-section" data-section="keys" hidden>
+      <h1 class="adm-h1">Manage keys <button class="adm-btn" id="ky-test" type="button" style="float:right;font-size:13px">Test keys</button></h1>
+      <div class="adm-grid" id="ky-grid"></div>
+      <div class="adm-panel">
+        <div class="adm-panel__title">Rank ladder dataset</div>
+        <div class="adm-panel__body">
+          <div class="adm-row"><div><div id="ky-ladder">—</div><div class="adm-hint">The pp ↔ rank table used to estimate global ranks.</div></div>
+          <button class="adm-btn adm-btn--primary" id="ky-refresh" type="button">Refresh dataset</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="adm-section" data-section="console" hidden>
+      <h1 class="adm-h1">Console</h1>
+      <div class="adm-console">
+        <div class="adm-panel adm-term" data-chan="packets">
+          <div class="adm-panel__title">Packet log <label class="adm-check"><input type="checkbox" id="cn-hideping" checked> hide pings</label><button class="adm-mini" data-clear="packets" type="button">clear</button></div>
+          <div class="adm-term__body" id="term-packets"></div>
+        </div>
+        <div class="adm-panel adm-term" data-chan="requests">
+          <div class="adm-panel__title">Requests to other sites <button class="adm-mini" data-clear="requests" type="button">clear</button></div>
+          <div class="adm-term__body" id="term-requests"></div>
+        </div>
+        <div class="adm-panel adm-term" data-chan="internal">
+          <div class="adm-panel__title">Internal console log <button class="adm-mini" data-clear="internal" type="button">clear</button></div>
+          <div class="adm-term__body" id="term-internal"></div>
+        </div>
+        <div class="adm-panel adm-term" data-chan="web">
+          <div class="adm-panel__title">Incoming web requests <button class="adm-mini" data-clear="web" type="button">clear</button></div>
+          <div class="adm-term__body" id="term-web"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="adm-section" data-section="other" hidden>
+      <h1 class="adm-h1">Other</h1>
+      <div class="adm-panel">
+        <div class="adm-panel__title">Default site theme</div>
+        <div class="adm-panel__body">
+          <div class="adm-row"><select id="ot-theme" class="adm-select"></select><button class="adm-btn adm-btn--primary" id="ot-save" type="button">Save</button></div>
+          <div class="adm-hint">Used for visitors who haven't picked a theme in the site footer.</div>
+        </div>
+      </div>
+      <div id="ot-settings"></div>
+      <div class="adm-panel">
+        <div class="adm-panel__title">WIKI</div>
+        <div class="adm-panel__body"><div class="adm-todo">TO-DO</div></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<aside class="sg" id="sg" hidden aria-live="polite"></aside>
+
+<div class="adm-modal adm-modal--big" id="imp" hidden>
+  <div class="adm-modal__card adm-imp">
+    <h2>Import a profile</h2>
+    <div class="adm-hint" style="margin-top:0">Copies data from osu.ppy.sh into a local account. Requires the osu! v2 OAuth keys (Manage keys).</div>
+    <div class="adm-imp__cols">
+      <div>
+        <label class="adm-field">Official osu! username or user ID<input type="text" id="imp-query" autocomplete="off" placeholder="e.g. peppy or 2"></label>
+        <label class="adm-field">Local account name (leave empty to use the official name)<input type="text" id="imp-name" maxlength="64" autocomplete="off"></label>
+        <div class="adm-field">Import from the profile</div>
+        <label class="adm-check2"><input type="checkbox" id="imp-avatar" checked> Avatar</label>
+        <label class="adm-check2"><input type="checkbox" id="imp-cover" checked> Cover banner</label>
+        <label class="adm-check2"><input type="checkbox" id="imp-bio" checked> About me / bio</label>
+        <label class="adm-check2"><input type="checkbox" id="imp-details" checked> Details (location, interests, links…)</label>
+      </div>
+      <div>
+        <label class="adm-field">Scores to import<select id="imp-mode"><option value="osu">osu! (standard)</option><option value="taiko">osu!taiko</option><option value="fruits">osu!catch</option><option value="mania">osu!mania</option><option value="all">All modes</option></select></label>
+        <label class="adm-field">Top scores per mode<select id="imp-limit"><option value="100">100</option><option value="200">200</option></select></label>
+        <label class="adm-check2" style="margin-top:14px"><input type="checkbox" id="imp-ranks" checked> Look up official leaderboard ranks for the top plays (slower)</label>
+        <div class="adm-hint">Pp totals are matched to the official numbers.</div>
+      </div>
+    </div>
+    <div class="adm-imp__status" id="imp-status" hidden></div>
+    <div class="adm-actions"><button class="adm-btn adm-btn--primary" id="imp-go" type="button">Import</button><button class="adm-btn" id="imp-cancel" type="button">Cancel</button></div>
+  </div>
+</div>
+
+<div class="adm-modal" id="adm-modal" hidden><div class="adm-modal__card" id="adm-modal-card"></div></div>
+<div class="adm-toast" id="adm-toast" hidden></div>
+</body>
+</html>

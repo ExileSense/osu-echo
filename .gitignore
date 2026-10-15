@@ -1,0 +1,42 @@
+# Rust / Cargo build artifacts
+/target/
+/dist/
+*.zip
+**/*.rs.bk
+
+# Local database and data directory
+/.data/
+*.md
+!README.md
+!website/README.md
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Certificates and keys
+*.pem
+*.crt
+*.key
+*.pfx
+*.p12
+
+# Environment and sensitive credentials
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# OS and Editor specific files
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Local release packaging scripts
+package.ps1
+package.bat
+

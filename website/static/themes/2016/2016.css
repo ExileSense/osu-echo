@@ -1,0 +1,54 @@
+body.theme-2016 { font-family: "Arial Grande", Tahoma, Helvetica, Arial, sans-serif; font-size: 16px; color: #000; }
+body.theme-2016 .page { min-height: 300px; }
+body.theme-2016 #page-message { padding: 10px; background: #fff; border: 1px solid #a9a9ff; margin: 10px; }
+body.theme-2016 #profile-content[hidden], body.theme-2016 #page-message[hidden], body.theme-2016 #welcome[hidden], body.theme-2016 dialog:not([open]) { display: none; }
+body.theme-2016 .welcome { margin: 30px; text-align: center; }
+body.theme-2016 .welcome .button-blue { padding: 4px 18px; border-radius: 5px; color: #fff; border: 0; cursor: pointer; }
+body.theme-2016 .top a, body.theme-2016 .login-container a { cursor: pointer; }
+body.theme-2016 .small-avatar { height: 25px; width: 25px; vertical-align: middle; }
+body.theme-2016 .profile-details a.edit-profile { display: block; }
+body.theme-2016 .gamemode-button small { font-size: 70%; }
+body.theme-2016 .bbcode img.bbcode-image { max-width: 100%; }
+body.theme-2016 .bbcode-box { background: #f5f2fe; border: 1px solid #a9a9ff; padding: 3px; margin: 3px 0; }
+body.theme-2016 .bbcode-centre { text-align: center; }
+body.theme-2016 .bbcode-quote { border-left: 3px solid #a9a9ff; margin: 4px 0; padding: 2px 8px; background: #f5f2fe; }
+body.theme-2016 .bbcode-spoiler { background: #444; color: #444; }
+body.theme-2016 .bbcode-spoiler:hover { color: #fff; }
+body.theme-2016 .score a[data-delete-score] { font-size: 90%; color: #b03030; margin-left: 6px; }
+
+body.theme-2016 .local-footer { clear: both; text-align: center; font-size: 11px; color: #4e4e7a; padding: 14px 10px 6px; line-height: 1.5; }
+body.theme-2016 .local-footer a { color: #3843a6; }
+body.theme-2016 .theme-picker { display: block; margin-top: 6px; }
+body.theme-2016 .theme-picker select { font: inherit; border: 1px solid rgb(185, 197, 236); border-radius: 3px; background: #fff; color: #000; }
+body.theme-2016 .ladder-info button { font: inherit; background: #fff; border: 1.5px solid #8f8f9d; border-radius: 4px; padding: 0 6px; cursor: pointer; }
+body.theme-2016 .ladder-info button:hover { background: rgb(205, 205, 240); }
+
+body.theme-2016 dialog.login-dialog { border: 1px solid #a9a9ff; border-radius: 6px; background: #fff; color: #000; padding: 18px 22px; width: min(460px, calc(100% - 32px)); max-height: calc(100vh - 40px); overflow: auto; box-shadow: 0 8px 30px rgba(40, 30, 90, .35); font-size: 12px; }
+body.theme-2016 dialog.login-dialog::backdrop { background: rgba(60, 50, 120, .45); }
+body.theme-2016 dialog.login-dialog h2 { font-size: 150%; color: #5b5399; margin-bottom: 8px; }
+body.theme-2016 dialog.login-dialog label { display: block; margin: 9px 0 3px; font-weight: bold; }
+body.theme-2016 dialog.login-dialog input:not([type=checkbox]):not([type=file]), body.theme-2016 dialog.login-dialog select, body.theme-2016 dialog.login-dialog textarea { width: 100%; box-sizing: border-box; padding: 4px 6px; border: 1px solid rgb(185, 197, 236); border-radius: 3px; font: inherit; background: #fff; color: #000; }
+body.theme-2016 dialog.login-dialog fieldset { border: 1px solid #dad7fb; border-radius: 4px; margin: 10px 0; padding: 6px 10px; }
+body.theme-2016 dialog.login-dialog fieldset label { display: inline-block; font-weight: normal; margin-right: 10px; }
+body.theme-2016 dialog.login-dialog .close-dialog { position: absolute; right: 8px; top: 6px; background: none; border: 0; font-size: 22px; cursor: pointer; color: #5b5399; }
+body.theme-2016 dialog.login-dialog .login-help, body.theme-2016 dialog.login-dialog p { color: #555; margin: 4px 0; }
+body.theme-2016 dialog.login-dialog .pink-button, body.theme-2016 dialog.login-dialog button[type=submit], body.theme-2016 dialog.login-dialog .subtle-button, body.theme-2016 dialog.login-dialog button[type=button]:not(.close-dialog) { background: linear-gradient(rgb(123, 114, 207), rgb(91, 83, 153)); color: #fff; border: 0; border-radius: 5px; padding: 5px 16px; margin-top: 10px; cursor: pointer; font: inherit; width: auto; }
+body.theme-2016 dialog.login-dialog .subtle-button { background: linear-gradient(rgb(170, 170, 170), rgb(100, 100, 100)); margin-top: 4px; }
+body.theme-2016 dialog.login-dialog .avatar-editor { display: flex; gap: 12px; align-items: flex-start; margin: 8px 0; }
+body.theme-2016 dialog.login-dialog .avatar-editor img { width: 64px; height: 64px; border-radius: 4px; }
+body.theme-2016 dialog.login-dialog .cover-editor__preview { width: 160px; height: 64px; background: #ddd center/cover; border-radius: 4px; flex: none; }
+body.theme-2016 dialog.login-dialog .official-import-box { background: #f5f2fe; border: 1px solid #dad7fb; border-radius: 4px; padding: 8px; margin-bottom: 8px; }
+body.theme-2016 dialog.login-dialog .official-import-row { display: flex; gap: 6px; }
+body.theme-2016 dialog.login-dialog .official-import-row button { margin-top: 0; }
+body.theme-2016 dialog.login-dialog .settings-country-row { display: flex; gap: 8px; align-items: center; }
+body.theme-2016 dialog.login-dialog [role=alert] { color: #b03030; }
+body.theme-2016 dialog.login-dialog #section-order-list > * { display: flex; gap: 6px; align-items: center; margin: 2px 0; }
+body.theme-2016 .local-footer { padding-bottom: 28px; }
+
+.bbcode-spoilerbox__link{background:none;border:0;padding:0;margin:0;font:inherit;font-weight:700;color:#d56;cursor:pointer;display:inline-flex}
+.bbcode-spoilerbox__link:hover{text-decoration:underline}
+.bbcode-spoilerbox__link-icon:before{content:"\25B8";display:inline-block;width:16px}
+.js-spoilerbox--open>.bbcode-spoilerbox__link .bbcode-spoilerbox__link-icon:before{content:"\25BE"}
+.bbcode-spoilerbox__body{display:none;margin:8px 0 0 16px}
+.bbcode .well{background:rgba(0,0,0,.06);padding:8px;border-radius:4px}
+.bbcode__align-centre{text-align:center}.bbcode__align-right{text-align:right}
