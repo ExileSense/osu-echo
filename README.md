@@ -15,8 +15,7 @@ A local osu! server written in Rust. It lets you run your own private server on 
 - **Discord Webhook Integration**: Automatically post submitted plays with Rich Embeds and configurable minimum PP thresholds directly to a Discord channel.
 - **Web-Based Setup & Admin Panel**: First-run setup is a guided popup on the local admin page, with auto-detection of your osu! folder. Manage users, maps, API keys, settings and the website theme from the same page.
 - **Official Profile Import**: Import your avatar, cover, profile details, scores and (optionally) rank history from your official osu! profile.
-- **Exact PP**: pp is stored with 4 decimals internally and shown rounded on the site; hover the value to see the exact figure.
-- **Local Profile Website**: A local osu!web-style profile site with four selectable themes (modern, 2019, 2017, 2016).
+- **Local Profile Website**: A local osu!web-style profile site with four selectable themes (modern, 2019, 2017(osu!next), 2016).
 - **Automatic Windows Setup**: Adds the required hosts-file entries and trusts the local HTTPS certificate for you.
 
 ## Requirements
@@ -29,14 +28,13 @@ A local osu! server written in Rust. It lets you run your own private server on 
 ### 1. Get the Server
 
 #### Option A: Download Pre-built Release (Recommended)
-1. Download the latest `osu-echo-vX.X.X-windows-x86_64.zip` from [Releases](https://github.com/ptrchain/local-bancho-rust/releases).
-2. Extract the zip into a folder.
-3. Run `osu-echo.exe`.
+1. Download the latest `osu-echo.exe` from Releases.
+2. Run it in it's own folder, as it will create subfolders.
 
 #### Option B: Build from Source
 ```bash
-git clone https://github.com/ptrchain/local-bancho-rust.git
-cd local-bancho-rust
+git clone https://github.com/ExileSense/osu-echo.git
+cd osu-echo
 cargo run --release
 ```
 
@@ -149,7 +147,7 @@ To back up your progress or move to another machine, simply copy the `.data/` fo
 ## Credits & Acknowledgements
 
 Special thanks to:
-- [local-osu-server](https://github.com/jeevanjohnson/local-osu-server) by [Jeevan Johnson](https://github.com/jeevanjohnson), [ptrchain's fork](https://github.com/ptrchain/osu-echo) and its contributors for the original inspiration and foundational work that helped make this project possible.
+- [local-osu-server](https://github.com/jeevanjohnson/local-osu-server) by [Jeevan Johnson](https://github.com/jeevanjohnson), [ptrchain's fork](https://github.com/ptrchain/osu-echo) and its contributors for the original inspiration and foundational work.
 
 ## License
 
