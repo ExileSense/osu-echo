@@ -29,7 +29,34 @@ pub fn to_era_score(s: &Score) -> EraScore {
             s.nkatu,
             s.nmiss,
         ),
+        top50: Vec::new(),
     }
+}
+
+pub async fn top50_for(
+    http: &reqwest::Client,
+    db_handle: &std::sync::Arc<tokio::sync::Mutex<rusqlite::Connection>>,
+    api_key: Option<&str>,
+    beatmap_id: i64,
+) -> Vec<i64> {
+    if beatmap_id <= 0 {
+        return Vec::new();
+    }
+    {
+        let conn = db_handle.lock().await;
+        if let Some(v) = db::get_top50(&conn, beatmap_id) {
+            return v;
+        }
+    }
+    let Some(key) = api_key else { return Vec::new() };
+    let Some(list) = crate::utils::fetch_scores_from_bancho(http, key, beatmap_id, 0, None, 50).await else {
+        return Vec::new();
+    };
+    let mut scores: Vec<i64> = list.iter().map(|sc| sc.score.parse::<i64>().unwrap_or(0)).collect();
+    scores.sort_unstable_by(|a, b| b.cmp(a));
+    let conn = db_handle.lock().await;
+    let _ = db::set_top50(&conn, beatmap_id, &scores);
+    scores
 }
 
 fn calc_guarded(map: &EraMap, era: &str, score: &EraScore) -> Option<f64> {
@@ -38,15 +65,18 @@ fn calc_guarded(map: &EraMap, era: &str, score: &EraScore) -> Option<f64> {
         .flatten()
 }
 
-pub fn calculate_for(map: &EraMap, era: &str, score: &Score) -> Option<f64> {
-    calc_guarded(map, era, &to_era_score(score))
+pub fn calculate_for(map: &EraMap, era: &str, score: &Score, top50: &[i64]) -> Option<f64> {
+    let mut es = to_era_score(score);
+    es.top50 = top50.to_vec();
+    calc_guarded(map, era, &es)
 }
 
-pub fn store_all_eras(conn: &rusqlite::Connection, score_id: i64, map: &EraMap, score: &Score) {
+pub fn store_all_eras(conn: &rusqlite::Connection, score_id: i64, map: &EraMap, score: &Score, top50: &[i64]) {
     if score.mode != 0 {
         return;
     }
-    let es = to_era_score(score);
+    let mut es = to_era_score(score);
+    es.top50 = top50.to_vec();
     for era in pp_era::stored_ids() {
         if let Some(pp) = calc_guarded(map, era, &es) {
             let _ = db::upsert_era_pp(conn, score_id, era, pp);
@@ -82,6 +112,7 @@ pub async fn fill(state: &SharedState, player: &str, eras: &[&str], force: bool,
 
     let mut report = FillReport { scores: scores.len(), calculated: 0, no_map: 0 };
     let mut maps: HashMap<String, Option<EraMap>> = HashMap::new();
+    let mut bmap_ids: HashMap<String, Option<i64>> = HashMap::new();
 
     for score in &scores {
         let Some(id) = score.scoreid else { continue };
@@ -133,12 +164,23 @@ pub async fn fill(state: &SharedState, player: &str, eras: &[&str], force: bool,
             maps.insert(score.md5.clone(), content.and_then(|c| EraMap::parse(c.as_bytes())));
         }
 
+        if !bmap_ids.contains_key(&score.md5) {
+            let conn = db_handle.lock().await;
+            let bid = db::get_beatmap_by_md5(&conn, &score.md5).unwrap_or(None).map(|b| b.beatmap_id);
+            bmap_ids.insert(score.md5.clone(), bid);
+        }
+
         let Some(Some(map)) = maps.get(&score.md5) else {
             report.no_map += 1;
             continue;
         };
 
-        let es = to_era_score(score);
+        let mut es = to_era_score(score);
+        if missing.contains(&"early12") {
+            if let Some(Some(bid)) = bmap_ids.get(&score.md5) {
+                es.top50 = top50_for(&http, &db_handle, config.osu_api_key.as_deref(), *bid).await;
+            }
+        }
         let conn = db_handle.lock().await;
         for era in missing {
             if let Some(pp) = calc_guarded(map, era, &es) {
@@ -222,7 +264,7 @@ mod tests {
             submission_identity: None,
         };
         let id = db::insert_score(&conn, &score, "ranked").unwrap();
-        store_all_eras(&conn, id, &map, &score);
+        store_all_eras(&conn, id, &map, &score, &[]);
 
         for era in pp_era::stored_ids() {
             let rows = db::get_era_pp(&conn, "Alice", era).unwrap();

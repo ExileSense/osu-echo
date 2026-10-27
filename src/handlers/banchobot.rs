@@ -50,6 +50,7 @@ pub async fn handle_command(state: &Arc<RwLock<AppState>>, player_name: &str, re
         "ladder" => handle_ladder(state, reply_target, args).await,
         "mode" => handle_mode(state, player_name, reply_target, args).await,
         "oldsr" => handle_oldsr(state, reply_target, args).await,
+        "2013sr" => handle_2013sr(state, reply_target, args).await,
         "country" | "flag" => handle_country(state, player_name, reply_target, args).await,
         "mybest" | "pb" => handle_mybest(state, player_name, reply_target).await,
         "leaderboard" | "lb" => handle_leaderboard(state, player_name, reply_target).await,
@@ -82,7 +83,8 @@ pub async fn handle_help(state: &Arc<RwLock<AppState>>, target: &str) {
         {p}clearscores / {p}clearmap [set] : Clear your scores on the current beatmap (or set)\n\
         {p}friend <add/remove/list/sync> : Manage friends\n\
         {p}mode <vn/rx/ap> : Switch game mode\n\
-        {p}oldsr [on/off] : (2013 clients only) fixed 9.4 star readout, or the map's real star rating\n\
+        {p}oldsr [on/off/ppv1] : (2013 and older clients) fixed 9.4 star readout, the map's real star rating, or its ppv1 star rating (ppv1 is the default)\n\
+        {p}2013sr [on/off] : (2013 and older clients) toggle the fixed 9.4 stars from the ppv1-to-ppv2 transition; resets when the server restarts\n\
         {p}ladder [latest/year] : Rank ladder used for your rank (also set from the site footer)\n\
         {p}recentfeed [on/off] : Toggle #recent score channel feed\n\
         {p}country / {p}flag <code> : Set country flag (e.g. {p}country DE, {p}country US, {p}country AU)\n\
@@ -2310,6 +2312,7 @@ pub async fn handle_ladder(state: &Arc<RwLock<AppState>>, target: &str, args: &[
 const OLDSR_MAX_BUILD: i64 = 20131231;
 
 pub async fn handle_oldsr(state: &Arc<RwLock<AppState>>, target: &str, args: &[&str]) {
+    use crate::state::StarMode;
     let (build, current) = {
         let s = state.read().await;
         (s.client_build, s.old_star_rating)
@@ -2319,19 +2322,52 @@ pub async fn handle_oldsr(state: &Arc<RwLock<AppState>>, target: &str, args: &[&
         return;
     }
     let new_value = match args.first().map(|a| a.to_lowercase()).as_deref() {
-        Some("on") | Some("old") => true,
-        Some("off") | Some("modern") | Some("new") => false,
-        None => !current,
+        Some("on") | Some("old") | Some("fixed") => StarMode::Fixed,
+        Some("off") | Some("modern") | Some("new") => StarMode::Modern,
+        Some("ppv1") | Some("v1") => StarMode::Ppv1,
+        None => match current {
+            StarMode::Fixed => StarMode::Ppv1,
+            StarMode::Ppv1 => StarMode::Modern,
+            StarMode::Modern => StarMode::Fixed,
+        },
         Some(_) => {
-            reply(state, target, "Usage: !oldsr [on/off]").await;
+            reply(state, target, "Usage: !oldsr [on/off/ppv1]").await;
             return;
         }
     };
     state.write().await.old_star_rating = new_value;
-    let msg = if new_value {
-        "Old star rating on: song select shows the fixed 9.4 stars. Re-select a map to refresh."
+    let msg = match new_value {
+        StarMode::Fixed => "Old star rating on: song select shows the fixed 9.4 stars. Re-select a map to refresh.",
+        StarMode::Modern => "Old star rating off: song select shows each map's real star rating. Re-select a map to refresh.",
+        StarMode::Ppv1 => "ppv1 star rating on: song select shows each map's ppv1 star rating (0 to 5). Re-select a map to refresh.",
+    };
+    reply(state, target, msg).await;
+}
+
+pub async fn handle_2013sr(state: &Arc<RwLock<AppState>>, target: &str, args: &[&str]) {
+    use crate::state::StarMode;
+    let (build, current) = {
+        let s = state.read().await;
+        (s.client_build, s.old_star_rating)
+    };
+    if !build.map_or(false, |b| b <= OLDSR_MAX_BUILD) {
+        reply(state, target, "!2013sr only works on 2013 and older clients.").await;
+        return;
+    }
+    let fixed = match args.first().map(|a| a.to_lowercase()).as_deref() {
+        Some("on") => true,
+        Some("off") => false,
+        None => current != StarMode::Fixed,
+        Some(_) => {
+            reply(state, target, "Usage: !2013sr [on/off]").await;
+            return;
+        }
+    };
+    state.write().await.old_star_rating = if fixed { StarMode::Fixed } else { StarMode::Ppv1 };
+    let msg = if fixed {
+        "2013 star rating on: song select shows the fixed 9.4 stars. Re-select a map to refresh."
     } else {
-        "Old star rating off: song select shows each map's real star rating. Re-select a map to refresh."
+        "2013 star rating off: song select shows each map's ppv1 star rating. Re-select a map to refresh."
     };
     reply(state, target, msg).await;
 }

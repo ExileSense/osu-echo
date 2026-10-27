@@ -14,6 +14,8 @@ pub struct Paths {
     pub songs: Option<String>,
     pub replay: Option<String>,
     pub screenshots: Option<String>,
+    #[serde(default)]
+    pub extra_songs: Vec<String>,
 }
 
 fn default_true() -> bool {
@@ -58,7 +60,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            paths: Paths { osu_path: None, songs: None, replay: None, screenshots: None },
+            paths: Paths { osu_path: None, songs: None, replay: None, screenshots: None, extra_songs: vec![] },
             pp_leaderboard: false,
             ping_user_when_recent_score: false,
             enable_recent_channel: true,
@@ -88,6 +90,10 @@ impl Default for Config {
 impl Config {
     pub fn songs_folder(&self) -> Option<PathBuf> {
         self.paths.songs.as_ref().map(PathBuf::from).or_else(|| self.paths.osu_path.as_ref().map(|osu| PathBuf::from(osu).join("Songs")))
+    }
+
+    pub fn extra_songs_folders(&self) -> Vec<PathBuf> {
+        self.paths.extra_songs.iter().map(|s| s.trim()).filter(|s| !s.is_empty()).map(PathBuf::from).collect()
     }
 
     pub fn replay_folder(&self) -> Option<PathBuf> {

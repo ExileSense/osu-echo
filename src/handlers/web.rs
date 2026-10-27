@@ -28,18 +28,39 @@ pub async fn handle(
 ) -> Response {
     match sub_path {
         "/bancho_connect.php" => crate::handlers::cho::bancho_connect(state, params).await,
-        "/osu-submit-modular-selector.php" | "/osu-submit-modular.php" => score_sub(state, method, headers, body).await,
+        "/osu-submit-modular-selector.php" | "/osu-submit-modular.php" => {
+            utils::log(&format!("[submit] endpoint {}", sub_path));
+            score_sub(state, method, headers, body).await
+        }
+        "/osu-submit.php" | "/osu-submit-new.php" => {
+            utils::log(&format!("[submit] endpoint {}", sub_path));
+            let mut resp = score_sub(state, method, headers, body).await;
+            resp.body = plain_submit_reply(&resp.body);
+            resp
+        }
         "/check-updates.php" => Response::new(b"[]".to_vec()),
         "/release/update.php" => Response::new(b"0".to_vec()),
         "/release/update" | "/release/update2.php" | "/release/patches.php" | "/release/filter.txt" => Response::empty(),
         "/osu-getseasonal.php" => get_seasonal_bgs(state).await,
         "/osu-getreplay.php" => get_replay(state, params).await,
         "/osu-osz2-getscores.php" => osz2_leaderboard(state, params).await,
-        "/osu-getscores6.php" | "/osu-getscores5.php" | "/osu-getscores4.php" => legacy_leaderboard(state, params).await,
+        "/osu-getscores6.php" | "/osu-getscores5.php" | "/osu-getscores4.php" => {
+            utils::log(&format!("[leaderboard] endpoint {}", sub_path));
+            legacy_leaderboard(state, params).await
+        }
+        "/rating/ingame-rate.php" | "/rating/ingame-rate2.php" | "/osu-rate.php" => {
+            let voted = params.get("v").map_or(false, |v| !v.is_empty());
+            let body = match (sub_path, voted) {
+                (_, false) => "ok",
+                ("/osu-rate.php", true) => "ok\n0.00",
+                _ => "0.00",
+            };
+            utils::log(&format!("[rating] {} v={:?} -> {}", sub_path, params.get("v"), body.replace('\n', "\\n")));
+            Response::new(body.as_bytes().to_vec())
+        }
         "/osu-search.php" => direct_search(state, params).await,
         "/osu-getfriends.php" => get_friends(state, params).await,
         "/lastfm.php"
-        | "/osu-rate.php"
         | "/osu-error.php"
         | "/osu-session.php"
         | "/difficulty-rating"
@@ -51,6 +72,29 @@ pub async fn handle(
             Response::empty()
         }
     }
+}
+
+fn plain_submit_reply(charts: &[u8]) -> Vec<u8> {
+    let text = String::from_utf8_lossy(charts);
+    let overall = match text.lines().nth(1) {
+        Some(l) if l.contains("chartId:") => l,
+        _ => return charts.to_vec(),
+    };
+    let field = |name: &str| -> String {
+        overall
+            .split('|')
+            .find_map(|kv| kv.strip_prefix(name).and_then(|r| r.strip_prefix(':')))
+            .unwrap_or("")
+            .to_string()
+    };
+    let rank = field("beatmapRankingAfter");
+    let rank = if rank.is_empty() { "0".to_string() } else { rank };
+    let mut lines = vec![rank, "0".to_string()];
+    let ach = field("achievements");
+    if !ach.is_empty() {
+        lines.push(ach);
+    }
+    lines.join("\n").into_bytes()
 }
 
 async fn score_sub(state: Arc<RwLock<AppState>>, method: &hyper::Method, headers: &hyper::HeaderMap, body: &[u8]) -> Response {
@@ -83,7 +127,10 @@ async fn score_sub(state: Arc<RwLock<AppState>>, method: &hyper::Method, headers
     };
 
     match crate::handlers::score_submit::process_native_submission(state, decoded).await {
-        Ok(charts) => Response::new(charts),
+        Ok(charts) => {
+            utils::log(&format!("[submit] reply: {}", String::from_utf8_lossy(&charts).replace('\n', " // ")));
+            Response::new(charts)
+        }
         Err(e) => {
             utils::log_error(&format!("Failed to process score submission: {}", e));
             Response::new(b"error: no".to_vec())
@@ -146,7 +193,7 @@ async fn get_replay(state: Arc<RwLock<AppState>>, params: &std::collections::Has
 
 static SHORT_SCORE_IDS: std::sync::OnceLock<std::sync::Mutex<std::collections::HashMap<i64, i64>>> = std::sync::OnceLock::new();
 
-fn shorten_score_id(id: i64) -> i64 {
+pub(crate) fn shorten_score_id(id: i64) -> i64 {
     if id <= i32::MAX as i64 {
         return id;
     }
@@ -225,6 +272,72 @@ fn request_v1_text(modern: &str) -> String {
 
 const OLD_CLIENT_STAR_RATING: &str = "9.4";
 
+fn ppv1_star_cache() -> &'static std::sync::Mutex<std::collections::HashMap<String, String>> {
+    static CACHE: std::sync::OnceLock<std::sync::Mutex<std::collections::HashMap<String, String>>> = std::sync::OnceLock::new();
+    CACHE.get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+}
+
+async fn ppv1_star_text(state: &Arc<RwLock<AppState>>, md5: &str) -> Option<String> {
+    if let Some(v) = ppv1_star_cache().lock().ok().and_then(|c| c.get(md5).cloned()) {
+        return Some(v);
+    }
+    let (http, db_handle, config) = {
+        let s = state.read().await;
+        (s.http.clone(), s.db.clone(), s.config.clone())
+    };
+    let bmap = {
+        let conn = db_handle.lock().await;
+        db::get_beatmap_by_md5(&conn, md5).ok().flatten()
+    }?;
+    let content = utils::get_or_fetch_beatmap_content(&http, &db_handle, &config, &bmap).await?;
+    let map = crate::pp_era::EraMap::parse(content.as_bytes())?.with_beatmap(&bmap);
+    let stars = map.ppv1_stars();
+    if stars <= 0.0 {
+        return None;
+    }
+    let text = format!("{:.2}", stars);
+    if let Ok(mut c) = ppv1_star_cache().lock() {
+        c.insert(md5.to_string(), text.clone());
+    }
+    Some(text)
+}
+
+fn log_leaderboard_request(kind: &str, params: &std::collections::HashMap<String, String>, body: &[u8]) {
+    let get = |k: &str| params.get(k).map(|v| v.as_str()).unwrap_or("-");
+    let head = String::from_utf8_lossy(body).lines().next().unwrap_or("").chars().take(60).collect::<String>();
+    utils::log(&format!(
+        "[leaderboard:{}] c={} f={} i={} m={} v={} vv={} -> {} ({} bytes)",
+        kind, get("c"), get("f"), get("i"), get("m"), get("v"), get("vv"), head, body.len()
+    ));
+}
+
+async fn apply_star_mode(state: &Arc<RwLock<AppState>>, md5: Option<String>, mut out: String) -> String {
+    let mode = state.read().await.old_star_rating;
+    let value = match mode {
+        crate::state::StarMode::Fixed => Some(OLD_CLIENT_STAR_RATING.to_string()),
+        crate::state::StarMode::Modern => match md5 {
+            Some(md5) => {
+                let s = state.read().await;
+                let db = s.db.lock().await;
+                db::get_beatmap_by_md5(&db, &md5).ok().flatten().map(|b| b.difficultyrating).filter(|v| *v > 0.0).map(|v| format!("{:.2}", v))
+            }
+            None => None,
+        },
+        crate::state::StarMode::Ppv1 => match md5 {
+            Some(md5) => ppv1_star_text(state, &md5).await,
+            None => None,
+        },
+    };
+    if let Some(value) = value {
+        let mut lines: Vec<String> = out.split('\n').map(|l| l.to_string()).collect();
+        if lines.len() >= 4 {
+            lines[3] = value;
+            out = lines.join("\n");
+        }
+    }
+    out
+}
+
 async fn osz2_leaderboard(state: Arc<RwLock<AppState>>, params: &std::collections::HashMap<String, String>) -> Response {
     let version: i32 = match params.get("vv").and_then(|v| v.parse().ok()) {
         Some(v) => v,
@@ -232,30 +345,12 @@ async fn osz2_leaderboard(state: Arc<RwLock<AppState>>, params: &std::collection
         None => 4,
     };
     let resp = leaderboard(state.clone(), params).await;
+    log_leaderboard_request("osz2", params, &resp.body);
     if version > 1 {
         return resp;
     }
     let text = String::from_utf8_lossy(&resp.body).to_string();
-    let mut out = request_v1_text(&text);
-    {
-        let locked = state.read().await.old_star_rating;
-        let value = if locked {
-            Some(OLD_CLIENT_STAR_RATING.to_string())
-        } else if let Some(md5) = params.get("c") {
-            let s = state.read().await;
-            let db = s.db.lock().await;
-            db::get_beatmap_by_md5(&db, md5).ok().flatten().map(|b| b.difficultyrating).filter(|v| *v > 0.0).map(|v| format!("{:.2}", v))
-        } else {
-            None
-        };
-        if let Some(value) = value {
-            let mut lines: Vec<String> = out.split('\n').map(|l| l.to_string()).collect();
-            if lines.len() >= 4 {
-                lines[3] = value;
-                out = lines.join("\n");
-            }
-        }
-    }
+    let out = apply_star_mode(&state, params.get("c").cloned(), request_v1_text(&text)).await;
     Response::new(out.into_bytes())
 }
 
@@ -273,6 +368,9 @@ fn legacy_leaderboard_text(modern: &str) -> String {
     for (i, line) in rest.iter().enumerate() {
         if i >= 3 && !line.is_empty() {
             let mut f: Vec<String> = line.split('|').map(|x| x.to_string()).collect();
+            if let Some(id) = f.first().and_then(|v| v.parse::<i64>().ok()) {
+                f[0] = shorten_score_id(id).to_string();
+            }
             if f.len() >= 15 {
                 if let Ok(ts) = f[14].parse::<i64>() {
                     if let Some(dt) = chrono::DateTime::from_timestamp(ts, 0) {
@@ -293,9 +391,14 @@ async fn legacy_leaderboard(state: Arc<RwLock<AppState>>, params: &std::collecti
     let mut p = params.clone();
     p.remove("u");
     p.entry("v".to_string()).or_insert_with(|| "1".to_string());
-    let resp = leaderboard(state, &p).await;
+    let resp = leaderboard(state.clone(), &p).await;
+    log_leaderboard_request("legacy", params, &resp.body);
     let text = String::from_utf8_lossy(&resp.body).to_string();
-    Response::new(legacy_leaderboard_text(&text).into_bytes())
+    let out = apply_star_mode(&state, params.get("c").cloned(), legacy_leaderboard_text(&text)).await;
+    for (i, line) in out.lines().take(6).enumerate() {
+        utils::log(&format!("[leaderboard:legacy] reply line {}: {}", i, line));
+    }
+    Response::new(out.into_bytes())
 }
 
 async fn leaderboard(state: Arc<RwLock<AppState>>, params: &std::collections::HashMap<String, String>) -> Response {
@@ -432,6 +535,10 @@ async fn leaderboard(state: Arc<RwLock<AppState>>, params: &std::collections::Ha
         db::get_beatmap_by_md5(&db_conn, &md5).unwrap_or(None)
     };
 
+    if bmap.as_ref().map_or(false, |b| b.beatmap_id == 0 && b.approved == 0) {
+        bmap = None;
+    }
+
     if bmap.is_none() && !md5.is_empty() {
         let (api_key, http, db, config) = {
             let s = state.read().await;
@@ -447,13 +554,42 @@ async fn leaderboard(state: Arc<RwLock<AppState>>, params: &std::collections::Ha
             }
         }
         if bmap.is_none() {
-            if let Some(songs_dir) = utils::resolve_songs_folder(&config) {
-                let sid = if setid > 0 { Some(setid) } else { None };
-                if let Some((local_bmap, content)) = utils::find_and_parse_local_osu_file(&songs_dir, sid, None, Some(&md5), file_hint) {
+            let sid = if setid > 0 { Some(setid) } else { None };
+            for songs_dir in utils::resolve_songs_folders(&config) {
+                if let Some((mut local_bmap, content)) = utils::find_and_parse_local_osu_file(&songs_dir, sid, None, Some(&md5), file_hint) {
+                    if local_bmap.approved <= 0 || local_bmap.beatmap_id == 0 {
+                        if let Some(ref key) = api_key {
+                            let lookup_set = if local_bmap.beatmapset_id > 0 { local_bmap.beatmapset_id } else { setid };
+                            if lookup_set > 0 {
+                                let hint = if local_bmap.version.is_empty() { file_hint.map(|s| s.to_string()) } else { Some(local_bmap.version.clone()) };
+                                if let Some(api) = utils::fetch_beatmap_from_api_with_hint(&http, key, &[("s", lookup_set.to_string())], hint.as_deref()).await {
+                                    local_bmap.approved = api.approved;
+                                    local_bmap.approved_date = api.approved_date.clone();
+                                    if local_bmap.beatmapset_id == 0 {
+                                        local_bmap.beatmapset_id = api.beatmapset_id;
+                                    }
+                                    if local_bmap.beatmap_id == 0 && api.version.eq_ignore_ascii_case(&local_bmap.version) {
+                                        local_bmap.beatmap_id = api.beatmap_id;
+                                    }
+                                }
+                            }
+                        }
+                    }
                     let db_conn = db.lock().await;
                     let _ = db::insert_beatmap(&db_conn, &local_bmap);
                     let _ = db::update_beatmap_file_content(&db_conn, &local_bmap.file_md5, &content);
                     bmap = Some(local_bmap);
+                    break;
+                }
+            }
+        }
+        if bmap.is_none() && setid > 0 {
+            if let Some(ref key) = api_key {
+                if let Some(mut api) = utils::fetch_beatmap_from_api_with_hint(&http, key, &[("s", setid.to_string())], file_hint).await {
+                    api.file_md5 = md5.clone();
+                    let db_conn = db.lock().await;
+                    let _ = db::insert_beatmap(&db_conn, &api);
+                    bmap = Some(api);
                 }
             }
         }
@@ -2072,6 +2208,13 @@ mod tests {
 
 #[cfg(test)]
 mod legacy_lb_tests {
+    #[test]
+    fn plain_submit_reply_is_rank_then_next_rank_then_achievements() {
+        let charts = b"beatmapId:1|approvedDate:0\nchartId:overall|achievements:a.png b.png|rankBefore:5|beatmapRankingBefore:0|beatmapRankingAfter:3";
+        assert_eq!(super::plain_submit_reply(charts), b"3\n0\na.png b.png".to_vec());
+        assert_eq!(super::plain_submit_reply(b"error: no"), b"error: no".to_vec());
+    }
+
     use super::legacy_leaderboard_text;
 
     #[test]

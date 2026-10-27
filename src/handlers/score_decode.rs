@@ -55,35 +55,41 @@ pub fn parse_submission(content_type: &str, body: &[u8]) -> Result<DecodedSubmis
         None => LEGACY_SCORE_KEY.as_bytes().to_vec(),
     };
 
-    let iv_b64 = fields.get("iv").ok_or("Missing iv field")?;
     let score_b64 = fields.get("score").ok_or("Missing encrypted score field")?;
-
-    let iv_str = String::from_utf8_lossy(iv_b64).trim().to_string();
     let score_str = String::from_utf8_lossy(score_b64).trim().to_string();
 
+    let decrypted_str = match fields.get("iv") {
+        None => score_str,
+        Some(iv_b64) => {
+            let iv_str = String::from_utf8_lossy(iv_b64).trim().to_string();
+
+            let b64_engine = base64::engine::general_purpose::STANDARD;
+            let iv = b64_engine.decode(iv_str.as_bytes()).map_err(|e| format!("Invalid base64 iv: {e}"))?;
+            let encrypted = b64_engine.decode(score_str.as_bytes()).map_err(|e| format!("Invalid base64 score: {e}"))?;
+
+            if iv.len() != 32 {
+                return Err(format!("Invalid IV length: expected 32, got {}", iv.len()));
+            }
+            if encrypted.is_empty() || encrypted.len() % 32 != 0 || encrypted.len() > 65536 {
+                return Err(format!("Invalid encrypted score length: {}", encrypted.len()));
+            }
+
+            if key.len() != 32 {
+                return Err(format!("Invalid score key length: {}", key.len()));
+            }
+
+            let cipher = RijndaelCbc::<Pkcs7Padding>::new(&key, 32).map_err(|e| format!("Failed to create Rijndael cipher: {:?}", e))?;
+
+            let decrypted = cipher.decrypt(&iv, encrypted).map_err(|e| format!("Failed to decrypt score payload: {:?}", e))?;
+
+            String::from_utf8(decrypted).map_err(|e| format!("Decrypted payload is not valid UTF-8: {e}"))?
+        }
+    };
+
     let b64_engine = base64::engine::general_purpose::STANDARD;
-    let iv = b64_engine.decode(iv_str.as_bytes()).map_err(|e| format!("Invalid base64 iv: {e}"))?;
-    let encrypted = b64_engine.decode(score_str.as_bytes()).map_err(|e| format!("Invalid base64 score: {e}"))?;
-
-    if iv.len() != 32 {
-        return Err(format!("Invalid IV length: expected 32, got {}", iv.len()));
-    }
-    if encrypted.is_empty() || encrypted.len() % 32 != 0 || encrypted.len() > 65536 {
-        return Err(format!("Invalid encrypted score length: {}", encrypted.len()));
-    }
-
-    if key.len() != 32 {
-        return Err(format!("Invalid score key length: {}", key.len()));
-    }
-
-    let cipher = RijndaelCbc::<Pkcs7Padding>::new(&key, 32).map_err(|e| format!("Failed to create Rijndael cipher: {:?}", e))?;
-
-    let decrypted = cipher.decrypt(&iv, encrypted).map_err(|e| format!("Failed to decrypt score payload: {:?}", e))?;
-
-    let decrypted_str = String::from_utf8(decrypted).map_err(|e| format!("Decrypted payload is not valid UTF-8: {e}"))?;
 
     let data: Vec<&str> = decrypted_str.split(':').collect();
-    if data.len() < 16 {
+    if data.len() < 15 {
         return Err(format!("Insufficient fields in decrypted score: got {}", data.len()));
     }
 
@@ -104,7 +110,10 @@ pub fn parse_submission(content_type: &str, body: &[u8]) -> Result<DecodedSubmis
     let _grade = data[12];
     let mods: u32 = data[13].parse().map_err(|_| "Invalid mods")?;
     let passed = data[14].eq_ignore_ascii_case("true");
-    let mode: i32 = data[15].parse().map_err(|_| "Invalid mode")?;
+    let mode: i32 = match data.get(15) {
+        Some(v) if !v.trim().is_empty() => v.trim().parse().map_err(|_| "Invalid mode")?,
+        _ => 0,
+    };
     let date = data.get(16).unwrap_or(&"").to_string();
     let osu_version = data.get(17).unwrap_or(&"").to_string();
 
@@ -218,5 +227,20 @@ mod tests {
         assert_eq!(sub.score.score, 42000);
         assert_eq!(sub.score.nmiss, 1);
         assert_eq!(sub.score.mode, 0);
+    }
+
+    #[test]
+    fn test_unencrypted_submission_without_iv_is_read_as_plain_text() {
+        let plain = "0123456789abcdef0123456789abcdef:Bob:chk:100:2:1:10:5:1:42000:300:False:A:0:True";
+        let body = format!(
+            "--boundary\r\nContent-Disposition: form-data; name=\"score\"\r\n\r\n{}\r\n--boundary--\r\n",
+            plain
+        );
+        let sub = parse_submission("multipart/form-data; boundary=boundary", body.as_bytes()).unwrap();
+        assert_eq!(sub.score.name, "Bob");
+        assert_eq!(sub.score.score, 42000);
+        assert_eq!(sub.score.n300, 100);
+        assert_eq!(sub.score.mode, 0);
+        assert!(sub.legacy);
     }
 }

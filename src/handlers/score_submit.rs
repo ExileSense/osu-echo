@@ -248,6 +248,23 @@ pub fn build_charts_for(
     }
 }
 
+fn legacy_chart_date(bmap: &Beatmap) -> String {
+    let valid = |d: &str| {
+        let d = d.trim();
+        d.len() >= 10
+            && d.as_bytes()[4] == b'-'
+            && d.as_bytes()[7] == b'-'
+            && d[..4].bytes().all(|c| c.is_ascii_digit())
+            && d[5..7].bytes().all(|c| c.is_ascii_digit())
+            && d[8..10].bytes().all(|c| c.is_ascii_digit())
+    };
+    let pick = bmap.approved_date.as_deref().filter(|d| valid(d)).or(Some(bmap.last_update.as_str()).filter(|d| valid(d)));
+    match pick {
+        Some(d) => d.trim().chars().take(19).collect(),
+        None => "2010-01-01 00:00:00".to_string(),
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn build_legacy_charts(
     bmap: &Beatmap,
@@ -259,9 +276,10 @@ pub fn build_legacy_charts(
     playcount: i32,
     achievements_new: Option<&str>,
 ) -> Vec<u8> {
+    let approved = legacy_chart_date(bmap);
     let meta = format!(
-        "beatmapId:{}|beatmapSetId:{}|beatmapPlaycount:{}|beatmapPasscount:{}|approvedDate:0",
-        bmap.beatmap_id, bmap.beatmapset_id, playcount, playcount
+        "beatmapId:{}|beatmapSetId:{}|beatmapPlaycount:{}|beatmapPasscount:{}|approvedDate:{}",
+        bmap.beatmap_id, bmap.beatmapset_id, playcount, playcount, approved
     );
     let achievements = achievements_new
         .unwrap_or("")
@@ -270,7 +288,7 @@ pub fn build_legacy_charts(
         .filter(|n| !n.is_empty())
         .collect::<Vec<_>>()
         .join(" ");
-    let online_score_id = -score.scoreid.unwrap_or(0);
+    let online_score_id = crate::handlers::web::shorten_score_id(score.scoreid.unwrap_or(0));
     let overall = format!(
         "chartId:overall|chartName:Overall Ranking|chartUrl:http://127.0.0.1:5000/u/2|chartEndDate:|achievements:{}|achievements-new:|rankBefore:{}|rankAfter:{}|rankedScoreBefore:{}|rankedScoreAfter:{}|totalScoreBefore:{}|totalScoreAfter:{}|playCountBefore:{}|playCountAfter:{}|maxComboBefore:{}|maxComboAfter:{}|ppBefore:{:.0}|ppAfter:{:.0}|accuracyBefore:{:.4}|accuracyAfter:{:.4}|onlineScoreId:{}|toNextRankUser:|toNextRank:0|beatmapRankingBefore:{}|beatmapRankingAfter:{}",
         achievements,
@@ -595,6 +613,11 @@ pub async fn process_native_submission(state: Arc<RwLock<AppState>>, sub: Decode
     };
 
     let parsed_map = rosu_pp::Beatmap::from_bytes(content.as_bytes()).ok();
+    let top50 = if score.mode == 0 {
+        crate::handlers::era_pp::top50_for(&s.http, &s.db, s.config.osu_api_key.as_deref(), bmap.beatmap_id).await
+    } else {
+        Vec::new()
+    };
     let mut client_era: Option<&'static str> = None;
     if let Some(ref map) = parsed_map {
         let game_mode = match score.mode {
@@ -626,7 +649,7 @@ pub async fn process_native_submission(state: Arc<RwLock<AppState>>, sub: Decode
         if score.mode == 0 {
             if let Some(era) = s.client_build.and_then(crate::pp_era::era_for_build) {
                 if let Some(era_map) = crate::pp_era::EraMap::parse(content.as_bytes()) {
-                    if let Some(pp) = crate::handlers::era_pp::calculate_for(&era_map, era, &score) {
+                    if let Some(pp) = crate::handlers::era_pp::calculate_for(&era_map, era, &score, &top50) {
                         score.pp = Some(pp);
                         client_era = Some(era);
                     }
@@ -687,7 +710,7 @@ pub async fn process_native_submission(state: Arc<RwLock<AppState>>, sub: Decode
                 }
                 if score.mode == 0 {
                     if let Some(era_map) = crate::pp_era::EraMap::parse(content.as_bytes()) {
-                        crate::handlers::era_pp::store_all_eras(&db_conn, id, &era_map, &score);
+                        crate::handlers::era_pp::store_all_eras(&db_conn, id, &era_map, &score, &top50);
                     }
                 }
             }
@@ -905,6 +928,7 @@ mod tests {
         let lines: Vec<&str> = text.split('\n').collect();
         assert_eq!(lines.len(), 2);
         assert!(lines[0].starts_with("beatmapId:9|beatmapSetId:3|"));
+        assert!(lines[0].ends_with("approvedDate:2010-01-01 00:00:00"), "{}", lines[0]);
         let o = lines[1];
         assert!(o.contains("achievements:osu-combo-500 osu-skill-pass-1|"), "{o}");
         assert!(o.contains("rankBefore:100|rankAfter:95|"), "{o}");

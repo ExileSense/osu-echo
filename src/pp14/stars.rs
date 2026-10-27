@@ -1,0 +1,147 @@
+use super::util::Mods;
+
+use super::{DifficultyObject, OsuObject, Skill, SkillKind};
+
+use rosu_map::section::hit_objects::CurveBuffers;
+use rosu_pp_v4::Beatmap;
+
+const OBJECT_RADIUS: f32 = 64.0;
+const SECTION_LEN: f32 = 400.0;
+const DIFFICULTY_MULTIPLIER: f32 = 0.045;
+const NORMALIZED_RADIUS: f32 = 52.0;
+
+const OD_MIN: f64 = 79.5;
+const OD_MAX: f64 = 19.5;
+pub fn stars(map: &Beatmap, mods: u32) -> OsuDifficultyAttributes {
+    let map_attrs = map.attributes().mods(mods).build();
+    let adjusted_map_attrs = map_attrs.apply_clock_rate();
+
+    let mod_mult = match (mods.hr(), mods.ez()) {
+        (true, _) => 1.4,
+        (_, true) => 0.5,
+        _ => 1.0,
+    };
+
+    let mut diff_attrs = OsuDifficultyAttributes {
+        ar: adjusted_map_attrs.ar,
+        od: modify_od(map.od as f64, map_attrs.clock_rate(), mod_mult),
+        ..Default::default()
+    };
+
+    if map.hit_objects.len() < 2 {
+        return diff_attrs;
+    }
+
+    let section_len = SECTION_LEN * map_attrs.clock_rate() as f32;
+    let radius = OBJECT_RADIUS * (1.0 - 0.7 * (adjusted_map_attrs.cs - 5.0) / 5.0) / 2.0;
+    let scaling_factor = NORMALIZED_RADIUS / radius;
+
+    let mut ticks_buf = Vec::new();
+    let mut curve_bufs = CurveBuffers::default();
+
+    let mut hit_objects = map.hit_objects.iter().map(|h| {
+        OsuObject::new(
+            h,
+            map,
+            radius,
+            scaling_factor,
+            &mut ticks_buf,
+            &mut diff_attrs,
+            &mut curve_bufs,
+        )
+    });
+
+    let mut aim = Skill::new(SkillKind::Aim);
+    let mut speed = Skill::new(SkillKind::Speed);
+
+    let mut current_section_end =
+        (map.hit_objects[0].start_time as f32 / section_len).ceil() * section_len;
+
+    let mut prev = hit_objects.next().unwrap();
+
+    let curr = hit_objects.next().unwrap();
+    let h = DifficultyObject::new(&curr, &prev, map_attrs.clock_rate() as f32, scaling_factor);
+
+    while h.base.time > current_section_end {
+        current_section_end += section_len;
+    }
+
+    aim.process(&h);
+    speed.process(&h);
+
+    prev = curr;
+
+    for curr in hit_objects {
+        let h = DifficultyObject::new(&curr, &prev, map_attrs.clock_rate() as f32, scaling_factor);
+
+        while h.base.time > current_section_end {
+            aim.save_current_peak();
+            aim.start_new_section_from(current_section_end);
+            speed.save_current_peak();
+            speed.start_new_section_from(current_section_end);
+
+            current_section_end += section_len;
+        }
+
+        aim.process(&h);
+        speed.process(&h);
+
+        prev = curr;
+    }
+
+    aim.save_current_peak();
+    speed.save_current_peak();
+
+    let aim_strain = aim.difficulty_value().sqrt() * DIFFICULTY_MULTIPLIER;
+    let speed_strain = speed.difficulty_value().sqrt() * DIFFICULTY_MULTIPLIER;
+
+    let stars = aim_strain + speed_strain + (aim_strain - speed_strain).abs() / 2.0;
+
+    diff_attrs.stars = stars as f64;
+    diff_attrs.speed_strain = speed_strain as f64;
+    diff_attrs.aim_strain = aim_strain as f64;
+
+    diff_attrs
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct OsuDifficultyAttributes {
+    pub aim_strain: f64,
+    pub speed_strain: f64,
+    pub ar: f64,
+    pub od: f64,
+    pub hp: f64,
+    pub n_circles: usize,
+    pub n_sliders: usize,
+    pub n_spinners: usize,
+    pub stars: f64,
+    pub max_combo: usize,
+}
+
+#[derive(Clone, Debug)]
+pub struct OsuPerformanceAttributes {
+    pub difficulty: OsuDifficultyAttributes,
+    pub pp: f64,
+    pub pp_acc: f64,
+    pub pp_aim: f64,
+    pub pp_flashlight: f64,
+    pub pp_speed: f64,
+}
+
+impl OsuPerformanceAttributes {
+    #[inline]
+    pub fn max_combo(&self) -> usize {
+        self.difficulty.max_combo
+    }
+}
+
+fn modify_od(base_od: f64, speed_mult: f64, mod_mult: f64) -> f64 {
+    let mut od = base_od;
+    od *= mod_mult;
+    let mut odms = OD_MIN - (6.0 * od).ceil();
+    odms = OD_MIN.min(OD_MAX.max(odms));
+    odms /= speed_mult;
+    od = (OD_MIN - odms) / 6.0;
+
+    od
+}

@@ -33,7 +33,14 @@ pub struct AppState {
     pub bancho_score_cache: HashMap<(i64, i32, Option<u32>, i32), (std::time::Instant, Vec<crate::types::score::BanchoScore>)>,
     pub web_sessions: HashMap<String, WebSession>,
     pub client_build: Option<i64>,
-    pub old_star_rating: bool,
+    pub old_star_rating: StarMode,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum StarMode {
+    Fixed,
+    Modern,
+    Ppv1,
 }
 
 impl AppState {
@@ -59,7 +66,7 @@ impl AppState {
             bancho_score_cache: HashMap::new(),
             web_sessions: HashMap::new(),
             client_build: None,
-            old_star_rating: true,
+            old_star_rating: StarMode::Ppv1,
         }
     }
 }

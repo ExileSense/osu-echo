@@ -260,7 +260,17 @@ pub fn init_db(conn: &Connection) -> SqlResult<()> {
         [],
     );
     let _ = conn.execute("CREATE INDEX IF NOT EXISTS idx_score_era_pp_era ON score_era_pp(era)", []);
+    let _ = conn.execute(
+        "CREATE TABLE IF NOT EXISTS map_top50 (
+            beatmap_id INTEGER PRIMARY KEY,
+            scores TEXT NOT NULL,
+            fetched INTEGER NOT NULL
+        )",
+        [],
+    );
     let _ = conn.execute("ALTER TABLE scores ADD COLUMN client_era TEXT", []);
+    let _ = conn.execute("DELETE FROM score_era_pp WHERE era = 'ppv1'", []);
+    let _ = conn.execute("UPDATE scores SET client_era = 'may14' WHERE client_era = 'ppv1'", []);
 
     let _ = conn.execute(
         "CREATE TABLE IF NOT EXISTS playtime (
@@ -452,6 +462,23 @@ pub fn update_score_pp_and_acc(conn: &Connection, score_id: i64, pp: f64, acc: f
     conn.execute(
         "UPDATE scores SET pp = ?1, acc = ?2 WHERE id = ?3",
         params![pp, acc, score_id],
+    )?;
+    Ok(())
+}
+
+pub fn get_top50(conn: &Connection, beatmap_id: i64) -> Option<Vec<i64>> {
+    let raw: String = conn
+        .query_row("SELECT scores FROM map_top50 WHERE beatmap_id = ?1", params![beatmap_id], |r| r.get(0))
+        .ok()?;
+    Some(raw.split(',').filter_map(|v| v.parse().ok()).collect())
+}
+
+pub fn set_top50(conn: &Connection, beatmap_id: i64, scores: &[i64]) -> SqlResult<()> {
+    let raw = scores.iter().map(|v| v.to_string()).collect::<Vec<_>>().join(",");
+    conn.execute(
+        "INSERT INTO map_top50 (beatmap_id, scores, fetched) VALUES (?1, ?2, strftime('%s','now'))
+         ON CONFLICT(beatmap_id) DO UPDATE SET scores = excluded.scores, fetched = excluded.fetched",
+        params![beatmap_id, raw],
     )?;
     Ok(())
 }

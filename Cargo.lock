@@ -1367,6 +1367,7 @@ dependencies = [
  "rcgen",
  "regex",
  "reqwest",
+ "rosu-map",
  "rosu-pp",
  "rosu-pp-gemini",
  "rosu-pp-older",

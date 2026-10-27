@@ -15,6 +15,8 @@ A local osu! server written in Rust. It lets you run your own private server on 
 - **Discord Webhook Integration**: Automatically post submitted plays with Rich Embeds and configurable minimum PP thresholds directly to a Discord channel.
 - **Web-Based Setup & Admin Panel**: First-run setup is a guided popup on the local admin page, with auto-detection of your osu! folder. Manage users, maps, API keys, settings and the website theme from the same page.
 - **Official Profile Import**: Import your avatar, cover, profile details, scores and (optionally) rank history from your official osu! profile.
+- **Exact PP**: pp is stored with 4 decimals internally and shown rounded on the site; hover the value to see the exact figure.
+- **Older pp systems**: Profile pp can be viewed under the pp system of each era back to 2012. Scores from 2013 and older clients use a custom 2012-2013 system with its own aim, speed and accuracy weighting and a bonus for scores close to a map's official top 50 (needs `OSU_API_KEY`).
 - **Local Profile Website**: A local osu!web-style profile site with four selectable themes (modern, 2019, 2017(osu!next), 2016).
 - **Automatic Windows Setup**: Adds the required hosts-file entries and trusts the local HTTPS certificate for you.
 

@@ -91,7 +91,13 @@ async fn connection(state: Arc<RwLock<AppState>>, mut sock: TcpStream) -> Result
     buf.drain(..login_end);
 
     let (reply, token) = cho::tcp_login(state.clone(), &login_text).await;
-    logger::info(&format!("[tcp-bancho] sent login reply packets {}", describe(&reply)));
+    crate::legacy_proto::reload_debug_flags();
+    let client_build = state.read().await.client_build;
+    let legacy = crate::legacy_proto::is_legacy_build(client_build);
+    let mut lctx = crate::legacy_proto::LegacyCtx::new(client_build);
+    let player_name = state.read().await.player.as_ref().map(|p| p.name.clone()).unwrap_or_default();
+    let reply = if legacy { lctx.out(&reply, &player_name) } else { reply };
+    logger::info(&format!("[tcp-bancho] sent login reply packets {} (legacy protocol: {})", describe(&reply), legacy));
     sock.write_all(&reply).await.map_err(|e| e.to_string())?;
     if token == "fail" {
         return Err("login failed".to_string());
@@ -112,10 +118,18 @@ async fn connection(state: Arc<RwLock<AppState>>, mut sock: TcpStream) -> Result
                 if done > 0 {
                     let chunk: Vec<u8> = buf.drain(..done).collect();
                     logger::info(&format!("[tcp-bancho] client sent {}", describe(&chunk)));
+                    for pkt in crate::packets::split_packets(&chunk) {
+                        if pkt.id == 21 {
+                            let text = crate::packets::PacketReader::new(pkt.payload).read_string().unwrap_or_else(|_| String::from_utf8_lossy(pkt.payload).to_string());
+                            logger::info(&format!("[tcp-bancho] client error report: {}", text.replace('\r', "").replace('\n', " | ")));
+                        }
+                    }
+                    let chunk = if legacy { lctx.input(&chunk) } else { chunk };
                     let resp = cho::handle(state.clone(), Some("tcp"), &chunk).await;
-                    if !resp.body.is_empty() {
-                        logger::info(&format!("[tcp-bancho] server sent {}", describe(&resp.body)));
-                        sock.write_all(&resp.body).await.map_err(|e| e.to_string())?;
+                    let body = if legacy { lctx.out(&resp.body, &player_name) } else { resp.body };
+                    if !body.is_empty() {
+                        logger::info(&format!("[tcp-bancho] server sent {}", describe(&body)));
+                        sock.write_all(&body).await.map_err(|e| e.to_string())?;
                     }
                 }
             }
@@ -133,9 +147,10 @@ async fn connection(state: Arc<RwLock<AppState>>, mut sock: TcpStream) -> Result
                     }
                 }
                 let resp = cho::handle(state.clone(), Some("tcp"), &[]).await;
-                if !resp.body.is_empty() {
-                    logger::info(&format!("[tcp-bancho] server sent {}", describe(&resp.body)));
-                    sock.write_all(&resp.body).await.map_err(|e| e.to_string())?;
+                let body = if legacy { lctx.out(&resp.body, &player_name) } else { resp.body };
+                if !body.is_empty() {
+                    logger::info(&format!("[tcp-bancho] server sent {}", describe(&body)));
+                    sock.write_all(&body).await.map_err(|e| e.to_string())?;
                 }
             }
         }

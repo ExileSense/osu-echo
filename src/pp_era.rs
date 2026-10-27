@@ -9,7 +9,8 @@ pub struct Era {
     pub label: &'static str,
 }
 
-pub const ERAS: [Era; 13] = [
+pub const ERAS: [Era; 14] = [
+    Era { id: "early12", label: "2012 - December 2013" },
     Era { id: "may14", label: "May 2014 - July 2014" },
     Era { id: "july14", label: "July 2014 - February 2015" },
     Era { id: "feb15", label: "February 2015 - April 2015" },
@@ -44,7 +45,8 @@ pub fn parse(input: &str) -> Option<&'static str> {
     let year: i32 = t.parse().ok()?;
     let year = if (0..100).contains(&year) { 2000 + year } else { year };
     Some(match year {
-        ..=2014 => "may14",
+        ..=2013 => "early12",
+        2014 => "may14",
         2015 => "apr15",
         2016..=2017 => "apr15",
         2018 => "may18",
@@ -60,6 +62,7 @@ pub fn parse(input: &str) -> Option<&'static str> {
 
 pub fn end_date(id: &str) -> Option<&'static str> {
     Some(match id {
+        "early12" => "2013-12-31",
         "may14" => "2014-06-30",
         "july14" => "2015-01-31",
         "feb15" => "2015-03-31",
@@ -102,6 +105,7 @@ pub struct EraScore {
     pub max_combo: u32,
     pub score: u32,
     pub accuracy: f64,
+    pub top50: Vec<i64>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -119,7 +123,7 @@ fn calculator(mode: u8, era: &str) -> Calc {
     }
     match mode {
         1 => Calc::Taiko(match era {
-            "may14" | "july14" | "feb15" | "apr15" | "may18" | "feb19" => "ppv1",
+            "early12" | "may14" | "july14" | "feb15" | "apr15" | "may18" | "feb19" => "ppv1",
             "jan21" | "jul21" | "nov21" => "2020",
             "sep22" => "2022",
             "oct24" => "2024",
@@ -127,20 +131,20 @@ fn calculator(mode: u8, era: &str) -> Calc {
             _ => return Calc::Live,
         }),
         2 => Calc::Catch(match era {
-            "may14" | "july14" | "feb15" | "apr15" | "may18" | "feb19" => "ppv1",
+            "early12" | "may14" | "july14" | "feb15" | "apr15" | "may18" | "feb19" => "ppv1",
             "jan21" | "jul21" | "nov21" | "sep22" => "2022",
             "oct24" | "mar25" => "2024",
             _ => return Calc::Live,
         }),
         3 => Calc::Mania(match era {
-            "may14" | "july14" | "feb15" | "apr15" => "ppv1",
+            "early12" | "may14" | "july14" | "feb15" | "apr15" => "ppv1",
             "may18" | "feb19" | "jan21" | "jul21" | "nov21" => "2018",
             "sep22" => "2022",
             _ => return Calc::Live,
         }),
         _ => Calc::Osu(match era {
-            "may14" | "july14" | "feb15" | "apr15" | "may18" | "feb19" | "jan21" | "jul21"
-            | "nov21" | "sep22" | "oct24" | "mar25" => ERAS
+            "early12" | "may14" | "july14" | "feb15" | "apr15" | "may18" | "feb19" | "jan21"
+            | "jul21" | "nov21" | "sep22" | "oct24" | "mar25" => ERAS
                 .iter()
                 .find(|e| e.id == era)
                 .map(|e| e.id)
@@ -152,11 +156,59 @@ fn calculator(mode: u8, era: &str) -> Calc {
 
 pub struct EraMap {
     map: Beatmap,
+    meta: crate::ppv1::MapMeta,
 }
 
 impl EraMap {
     pub fn parse(content: &[u8]) -> Option<Self> {
-        Beatmap::from_bytes(content).ok().map(|map| Self { map })
+        let map = Beatmap::from_bytes(content).ok()?;
+        let meta = meta_from(&map);
+        Some(Self { map, meta })
+    }
+
+    pub fn ppv1_stars(&self) -> f64 {
+        crate::ppv1::eyup_stars(&self.meta)
+    }
+
+    pub fn with_beatmap(mut self, b: &crate::types::beatmap::Beatmap) -> Self {
+        if b.hit_length > 0 {
+            self.meta.drain_secs = b.hit_length as f64;
+        }
+        if b.bpm > 0.0 {
+            self.meta.bpm = b.bpm;
+        }
+        if b.count_normal + b.count_slider + b.count_spinner > 0 {
+            self.meta.n_normal = b.count_normal as f64;
+            self.meta.n_slider = b.count_slider as f64;
+            self.meta.n_spinner = b.count_spinner as f64;
+        }
+        self
+    }
+}
+
+fn meta_from(map: &Beatmap) -> crate::ppv1::MapMeta {
+    use rosu_pp_v4::model::hit_object::HitObjectKind;
+    let (mut n, mut sl, mut sp) = (0.0, 0.0, 0.0);
+    for o in &map.hit_objects {
+        match o.kind {
+            HitObjectKind::Circle => n += 1.0,
+            HitObjectKind::Slider(_) => sl += 1.0,
+            HitObjectKind::Spinner(_) => sp += 1.0,
+            HitObjectKind::Hold(_) => n += 1.0,
+        }
+    }
+    let first = map.hit_objects.first().map_or(0.0, |o| o.start_time);
+    let last = map.hit_objects.last().map_or(0.0, |o| o.start_time);
+    crate::ppv1::MapMeta {
+        drain_secs: ((last - first - map.total_break_time()) / 1000.0).max(0.0),
+        bpm: map.bpm(),
+        hp: map.hp as f64,
+        od: map.od as f64,
+        cs: map.cs as f64,
+        n_normal: n,
+        n_slider: sl,
+        n_spinner: sp,
+        slider_multiplier: map.slider_multiplier,
     }
 }
 
@@ -208,6 +260,20 @@ macro_rules! osu_classic {
 
 fn osu(map: &Beatmap, id: &str, s: &EraScore) -> Option<f64> {
     Some(match id {
+        "early12" => {
+            let max = crate::pp14::OsuPP::new(map).mods(s.mods).calculate();
+            crate::pp14::OsuPP::new(map)
+                .mods(s.mods)
+                .attributes(max.difficulty)
+                .n300(s.n300)
+                .n100(s.n100)
+                .n50(s.n50)
+                .misses(s.nmiss)
+                .combo(s.max_combo)
+                .bonus(crate::pp14::leaderboard_multiplier(s.score as i64, &s.top50))
+                .calculate()
+                .pp
+        }
         "may14" => osu_classic!(osu_2014_may, map, s),
         "july14" => osu_classic!(osu_2014_july, map, s),
         "feb15" => osu_classic!(osu_2015_february, map, s),
@@ -391,6 +457,47 @@ mod tests {
     }
 
     #[test]
+    fn ppv1_star_rating_is_positive_and_capped_at_five() {
+        let stars = map().ppv1_stars();
+        assert!(stars > 0.0 && stars <= 5.0, "{stars}");
+    }
+
+    #[test]
+    fn leaderboard_bonus_only_touches_early12() {
+        let m = map();
+        let top: Vec<i64> = (0..50).map(|i| 600_000 - i * 1_000).collect();
+        let mut with = play(200, 0);
+        with.score = 700_000;
+        with.top50 = top;
+        let plain = play(200, 0);
+        let mut plain = plain;
+        plain.score = 700_000;
+        let a = calculate(&m, "early12", &with).unwrap();
+        let b = calculate(&m, "early12", &plain).unwrap();
+        assert!(a > b * 1.29 && a < b * 1.31, "{a} vs {b}");
+        let c = calculate(&m, "may14", &with).unwrap();
+        let d = calculate(&m, "may14", &plain).unwrap();
+        assert!((c - d).abs() < 1e-9);
+    }
+
+    #[test]
+    fn accuracy_pp_at_95_is_about_an_eighth_of_99_at_od8() {
+        let m = map();
+        let max = crate::pp14::OsuPP::new(&m.map).calculate();
+        let acc = |a: f32| {
+            crate::pp14::OsuPP::new(&m.map)
+                .attributes(max.difficulty.clone())
+                .combo(max.difficulty.max_combo as u32)
+                .accuracy(a)
+                .calculate()
+                .pp_acc
+        };
+        let ratio = acc(95.0) / acc(99.0);
+        assert!(ratio > 0.1 && ratio < 0.16, "{ratio}");
+        assert!(acc(89.0) < acc(99.0) * 0.01);
+    }
+
+    #[test]
     fn every_stored_osu_era_gives_a_positive_finite_pp() {
         let m = map();
         for id in stored_ids() {
@@ -414,7 +521,7 @@ mod tests {
 
     #[test]
     fn client_builds_map_to_the_system_of_their_time_and_modern_clients_stay_live() {
-        assert_eq!(era_for_build(20130604), Some("may14"));
+        assert_eq!(era_for_build(20130604), Some("early12"));
         assert_eq!(era_for_build(20140401), Some("may14"));
         assert_eq!(era_for_build(20140715), Some("july14"));
         assert_eq!(era_for_build(20150310), Some("feb15"));
@@ -431,6 +538,7 @@ mod tests {
     fn live_is_not_calculated_here_and_parse_accepts_years() {
         assert!(calculate(&map(), LIVE, &play(200, 0)).is_none());
         assert_eq!(parse("2014"), Some("may14"));
+        assert_eq!(parse("2013"), Some("early12"));
         assert_eq!(parse("2016"), Some("apr15"));
         assert_eq!(parse("25"), Some("mar25"));
         assert_eq!(parse("2026"), Some(LIVE));

@@ -764,6 +764,19 @@ pub fn resolve_songs_folder(config: &crate::types::config::Config) -> Option<std
     }
 }
 
+pub fn resolve_songs_folders(config: &crate::types::config::Config) -> Vec<std::path::PathBuf> {
+    let mut out: Vec<std::path::PathBuf> = Vec::new();
+    if let Some(p) = resolve_songs_folder(config) {
+        out.push(p);
+    }
+    for extra in config.extra_songs_folders() {
+        if extra.exists() && !out.contains(&extra) {
+            out.push(extra);
+        }
+    }
+    out
+}
+
 fn scan_dir_for_osu_file(
     dir: &std::path::Path,
     map_id: Option<i64>,
@@ -958,13 +971,32 @@ pub async fn fetch_scores_from_bancho(
         }
     }
 
-    let resp = http.get(url).send_traced().await.ok()?;
+    let resp = match http.get(url).send_traced().await {
+        Ok(r) => r,
+        Err(e) => {
+            log_error(&format!("[bancho-scores] request failed for beatmap {}: {}", beatmap_id, e));
+            return None;
+        }
+    };
     if resp.status() != 200 {
+        log_error(&format!("[bancho-scores] beatmap {} returned HTTP {}", beatmap_id, resp.status()));
         return None;
     }
 
-    let json: serde_json::Value = resp.json().await.ok()?;
-    let arr = json.as_array()?;
+    let json: serde_json::Value = match resp.json().await {
+        Ok(j) => j,
+        Err(e) => {
+            log_error(&format!("[bancho-scores] beatmap {} reply was not JSON: {}", beatmap_id, e));
+            return None;
+        }
+    };
+    let arr = match json.as_array() {
+        Some(a) => a,
+        None => {
+            log_error(&format!("[bancho-scores] beatmap {} reply was not a list: {}", beatmap_id, json.to_string().chars().take(160).collect::<String>()));
+            return None;
+        }
+    };
 
     let scores: Vec<crate::types::score::BanchoScore> = arr.iter().filter_map(crate::types::score::BanchoScore::from_json).collect();
 
