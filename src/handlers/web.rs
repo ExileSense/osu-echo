@@ -1059,16 +1059,48 @@ async fn search_catboy(
     Some(direct_resp.as_binary())
 }
 
+const OLD_CLIENT_MAP_CUTOFF_BUILD: i64 = 20131231;
+const OLD_CLIENT_MAP_CUTOFF_DATE: &str = "2013-12-31";
+
+fn direct_cutoff_for_build(build: Option<i64>) -> Option<&'static str> {
+    match build {
+        Some(b) if b > 0 && b <= OLD_CLIENT_MAP_CUTOFF_BUILD => Some(OLD_CLIENT_MAP_CUTOFF_DATE),
+        _ => None,
+    }
+}
+
+fn filter_direct_body(body: &[u8], cutoff: &str) -> Vec<u8> {
+    let text = String::from_utf8_lossy(body);
+    let mut lines = text.lines();
+    let Some(header) = lines.next() else {
+        return body.to_vec();
+    };
+    let Ok(count) = header.trim().parse::<usize>() else {
+        return body.to_vec();
+    };
+    let kept: Vec<&str> = lines
+        .filter(|line| match line.split('|').nth(6) {
+            Some(date) if date.len() >= 10 && date.as_bytes()[0].is_ascii_digit() => &date[..10] <= cutoff,
+            _ => true,
+        })
+        .collect();
+    let new_header = if count >= 100 { "101".to_string() } else { kept.len().to_string() };
+    let mut out = vec![new_header];
+    out.extend(kept.iter().map(|l| l.to_string()));
+    out.join("\n").into_bytes()
+}
+
 async fn direct_search(state: Arc<RwLock<AppState>>, params: &std::collections::HashMap<String, String>) -> Response {
     let query = params.get("q").map(|q| utils::url_decode(q)).unwrap_or_default();
     let mode: i32 = params.get("m").and_then(|v| v.parse().ok()).unwrap_or(-1);
     let ranking_status: i32 = params.get("r").and_then(|v| v.parse().ok()).unwrap_or(0);
     let page: i32 = params.get("p").and_then(|v| v.parse().ok()).unwrap_or(0);
 
-    let (prefix, http, osu_username, osu_password) = {
+    let (prefix, http, osu_username, osu_password, client_build) = {
         let s = state.read().await;
-        (s.config.command_prefix.clone(), s.http.clone(), s.config.osu_username.clone(), s.config.osu_password.clone())
+        (s.config.command_prefix.clone(), s.http.clone(), s.config.osu_username.clone(), s.config.osu_password.clone(), s.client_build)
     };
+    let cutoff = direct_cutoff_for_build(client_build);
 
     if query.starts_with(&prefix) {
         let msg = "Commands have moved to in-game chat!\nType your command in #osu or PM BanchoBot/Tillerino (e.g. !help, /np, !r).";
@@ -1078,6 +1110,10 @@ async fn direct_search(state: Arc<RwLock<AppState>>, params: &std::collections::
 
     if let Some(body) = search_catboy(&http, &query, mode, ranking_status, page).await {
         utils::log_success(&format!("Catboy mirror: maps loaded for query: `{}`!", query));
+        let body = match cutoff {
+            Some(c) => filter_direct_body(&body, c),
+            None => body,
+        };
         return Response::new(body);
     }
 
@@ -1102,7 +1138,11 @@ async fn direct_search(state: Arc<RwLock<AppState>>, params: &std::collections::
             if let Ok(resp) = http.get(url).send_traced().await {
                 if let Ok(body) = resp.bytes().await {
                     utils::log_success(&format!("Official osu!: maps loaded for query: `{}`!", query));
-                    return Response::new(body.to_vec());
+                    let body = match cutoff {
+                        Some(c) => filter_direct_body(&body, c),
+                        None => body.to_vec(),
+                    };
+                    return Response::new(body);
                 }
             }
         }
@@ -2245,6 +2285,20 @@ mod tests {
 
 #[cfg(test)]
 mod legacy_lb_tests {
+    #[test]
+    fn old_clients_only_see_maps_updated_by_the_end_of_2013() {
+        assert_eq!(super::direct_cutoff_for_build(Some(20130604)), Some("2013-12-31"));
+        assert_eq!(super::direct_cutoff_for_build(Some(1704)), Some("2013-12-31"));
+        assert_eq!(super::direct_cutoff_for_build(Some(20140401)), None);
+        assert_eq!(super::direct_cutoff_for_build(None), None);
+        let body = b"3\n1.osz|a|t|c|1|10.0|2012-05-01 10:00:00|1|0\n2.osz|a|t|c|1|10.0|2013-12-31 23:59:59|2|0\n3.osz|a|t|c|1|10.0|2014-01-01 00:00:00|3|0";
+        let out = String::from_utf8(super::filter_direct_body(body, "2013-12-31")).unwrap();
+        assert_eq!(out, "2\n1.osz|a|t|c|1|10.0|2012-05-01 10:00:00|1|0\n2.osz|a|t|c|1|10.0|2013-12-31 23:59:59|2|0");
+        let full: String = std::iter::once("100".to_string()).chain((0..100).map(|i| format!("{i}.osz|a|t|c|1|10.0|2020-01-01 00:00:00|{i}|0"))).collect::<Vec<_>>().join("\n");
+        let paged = String::from_utf8(super::filter_direct_body(full.as_bytes(), "2013-12-31")).unwrap();
+        assert_eq!(paged, "101");
+    }
+
     #[test]
     fn plain_submit_reply_is_rank_then_next_rank_then_achievements() {
         let charts = b"beatmapId:1|approvedDate:0\nchartId:overall|achievements:a.png b.png|rankBefore:5|beatmapRankingBefore:0|beatmapRankingAfter:3";
