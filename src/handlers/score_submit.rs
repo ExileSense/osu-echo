@@ -179,8 +179,8 @@ pub fn build_charts(
     achievements_new: Option<&str>,
 ) -> Vec<u8> {
     let meta = format!(
-        "beatmapId:{}|beatmapSetId:{}|beatmapPlaycount:{}|beatmapPasscount:{}|approvedDate:0",
-        bmap.beatmap_id, bmap.beatmapset_id, playcount, playcount
+        "beatmapId:{}|beatmapSetId:{}|beatmapPlaycount:{}|beatmapPasscount:{}|approvedDate:{}",
+        bmap.beatmap_id, bmap.beatmapset_id, playcount, playcount, legacy_chart_date(bmap)
     );
 
     let prev_score_str = previous.map(|s| s.score.to_string()).unwrap_or_default();
@@ -202,7 +202,7 @@ pub fn build_charts(
     let online_score_id = -sid;
 
     let beatmap_chart = format!(
-        "chartId:beatmap|chartUrl:https://osu.ppy.sh/b/{}|chartName:Local Beatmap Ranking|rankBefore:{}|rankAfter:{}|maxComboBefore:{}|maxComboAfter:{}|accuracyBefore:{}|accuracyAfter:{}|rankedScoreBefore:{}|rankedScoreAfter:{}|ppBefore:{}|ppAfter:{}|onlineScoreId:{}",
+        "chartId:beatmap|chartUrl:https://osu.ppy.sh/b/{}|chartName:Local Beatmap Ranking|rankBefore:{}|rankAfter:{}|maxComboBefore:{}|maxComboAfter:{}|accuracyBefore:{}|accuracyAfter:{}|rankedScoreBefore:{}|rankedScoreAfter:{}|ppBefore:{}|ppAfter:{}|onlineScoreId:{}|totalScoreBefore:{}|totalScoreAfter:{}|toNextRank:0|toNextRankUser:|beatmapRankingBefore:{}|beatmapRankingAfter:{}|chartEndDate:|achievements-new:|achievements:|playCountBefore:{}|playCountAfter:{}",
         bmap.beatmap_id,
         prev_rank, curr_rank,
         prev_max_combo, curr_max_combo,
@@ -210,10 +210,13 @@ pub fn build_charts(
         prev_score_str, curr_score_str,
         prev_pp, curr_pp,
         online_score_id,
+        prev_score_str, curr_score_str,
+        rank_before.unwrap_or(0), rank_after.unwrap_or(0),
+        (playcount - 1).max(0), playcount,
     );
 
     let overall_chart = format!(
-        "chartId:overall|chartUrl:http://127.0.0.1:5000/u/2|chartName:Overall Ranking|rankBefore:{}|rankAfter:{}|rankedScoreBefore:{}|rankedScoreAfter:{}|totalScoreBefore:{}|totalScoreAfter:{}|maxComboBefore:{}|maxComboAfter:{}|accuracyBefore:{:.2}|accuracyAfter:{:.2}|ppBefore:{:.0}|ppAfter:{:.0}|achievements-new:{}|onlineScoreId:{}",
+        "chartId:overall|chartUrl:http://127.0.0.1:5000/u/2|chartName:Overall Ranking|rankBefore:{}|rankAfter:{}|rankedScoreBefore:{}|rankedScoreAfter:{}|totalScoreBefore:{}|totalScoreAfter:{}|maxComboBefore:{}|maxComboAfter:{}|accuracyBefore:{:.2}|accuracyAfter:{:.2}|ppBefore:{:.0}|ppAfter:{:.0}|achievements-new:{}|onlineScoreId:{}|chartEndDate:|achievements:|toNextRank:0|toNextRankUser:|playCountBefore:{}|playCountAfter:{}|beatmapRankingBefore:{}|beatmapRankingAfter:{}",
         before.rank, after.rank,
         before.ranked_score, after.ranked_score,
         before.total_score, after.total_score,
@@ -222,6 +225,8 @@ pub fn build_charts(
         before.pp, after.pp,
         achievements_new.unwrap_or(""),
         online_score_id,
+        (playcount - 1).max(0), playcount,
+        rank_before.unwrap_or(0), rank_after.unwrap_or(0),
     );
 
     format!("{}\n{}\n{}", meta, beatmap_chart, overall_chart).into_bytes()
@@ -246,6 +251,64 @@ pub fn build_charts_for(
     } else {
         build_charts(bmap, score, before, after, previous, rank_before, rank_after, max_combo_before, playcount, achievements_new)
     }
+}
+
+pub fn accuracy_as_fraction(build: Option<i64>) -> bool {
+    matches!(build, Some(b) if (20160101..=20181231).contains(&b))
+}
+
+pub fn adapt_accuracy_for_build(charts: Vec<u8>, build: Option<i64>) -> Vec<u8> {
+    if !accuracy_as_fraction(build) {
+        return charts;
+    }
+    let text = String::from_utf8_lossy(&charts).to_string();
+    text.split('\n')
+        .map(|line| {
+            line.split('|')
+                .map(|kv| {
+                    for key in ["accuracyBefore:", "accuracyAfter:"] {
+                        if let Some(v) = kv.strip_prefix(key) {
+                            if let Ok(n) = v.trim().parse::<f64>() {
+                                return format!("{}{:.4}", key, n / 100.0);
+                            }
+                        }
+                    }
+                    kv.to_string()
+                })
+                .collect::<Vec<_>>()
+                .join("|")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+        .into_bytes()
+}
+
+pub fn needs_numeric_fields(build: Option<i64>) -> bool {
+    matches!(build, Some(b) if (20160101..=20161231).contains(&b))
+}
+
+pub fn fill_empty_numbers_for_build(charts: Vec<u8>, build: Option<i64>) -> Vec<u8> {
+    if !needs_numeric_fields(build) {
+        return charts;
+    }
+    const NUMERIC: [&str; 14] = [
+        "rankBefore", "rankAfter", "maxComboBefore", "maxComboAfter", "accuracyBefore", "accuracyAfter", "rankedScoreBefore",
+        "rankedScoreAfter", "totalScoreBefore", "totalScoreAfter", "ppBefore", "ppAfter", "playCountBefore", "playCountAfter",
+    ];
+    let text = String::from_utf8_lossy(&charts).to_string();
+    text.split('\n')
+        .map(|line| {
+            line.split('|')
+                .map(|kv| match kv.split_once(':') {
+                    Some((k, v)) if v.trim().is_empty() && NUMERIC.contains(&k) => format!("{}:0", k),
+                    _ => kv.to_string(),
+                })
+                .collect::<Vec<_>>()
+                .join("|")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+        .into_bytes()
 }
 
 fn legacy_chart_date(bmap: &Beatmap) -> String {
@@ -909,6 +972,24 @@ pub async fn score_submit(state: Arc<RwLock<AppState>>, score: Score, replay: &R
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn empty_numeric_fields_are_zeroed_only_for_2016_builds() {
+        let charts = b"chartId:beatmap|rankBefore:|rankAfter:|chartName:\nchartId:overall|ppBefore:|achievements-new:".to_vec();
+        let out = String::from_utf8(super::fill_empty_numbers_for_build(charts.clone(), Some(20160504))).unwrap();
+        assert_eq!(out, "chartId:beatmap|rankBefore:0|rankAfter:0|chartName:\nchartId:overall|ppBefore:0|achievements-new:");
+        assert_eq!(super::fill_empty_numbers_for_build(charts.clone(), Some(20170731)), charts);
+    }
+
+    #[test]
+    fn accuracy_is_scaled_to_a_fraction_only_for_2016_to_2018_builds() {
+        let charts = b"chartId:overall|accuracyBefore:62.35|accuracyAfter:|ppBefore:35\nchartId:beatmap|accuracyAfter:53.40".to_vec();
+        let scaled = String::from_utf8(super::adapt_accuracy_for_build(charts.clone(), Some(20170731))).unwrap();
+        assert_eq!(scaled, "chartId:overall|accuracyBefore:0.6235|accuracyAfter:|ppBefore:35\nchartId:beatmap|accuracyAfter:0.5340");
+        assert_eq!(super::adapt_accuracy_for_build(charts.clone(), Some(20150824)), charts);
+        assert_eq!(super::adapt_accuracy_for_build(charts.clone(), Some(20250101)), charts);
+        assert_eq!(super::adapt_accuracy_for_build(charts.clone(), None), charts);
+    }
+
     use super::*;
 
     #[test]

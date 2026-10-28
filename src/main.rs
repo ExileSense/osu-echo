@@ -261,6 +261,13 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         let _ = server::tls::setup_windows_hosts();
 
         if let Ok(acceptor) = server::tls::create_tls_acceptor(&paths.cert_pem, &paths.key_pem) {
+            let legacy_acceptor = match server::tls::create_legacy_acceptor(&paths.cert_pem, &paths.key_pem) {
+                Ok(a) => Some(std::sync::Arc::new(a)),
+                Err(e) => {
+                    logger::warn(&format!("Legacy TLS 1.0 support is unavailable: {}", e));
+                    None
+                }
+            };
             let https_state = shared_state.clone();
             tokio::spawn(async move {
                 match TcpListener::bind("127.0.0.1:443").await {
@@ -272,28 +279,50 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
                                 Err(_) => continue,
                             };
                             let acceptor = acceptor.clone();
+                            let legacy_acceptor = legacy_acceptor.clone();
                             let state = https_state.clone();
 
                             tokio::task::spawn(async move {
-                                let tls_stream = match acceptor.accept(stream).await {
-                                    Ok(s) => s,
+                                let mut buf = [0u8; 1024];
+                                let mut peeked = 0usize;
+                                for _ in 0..10 {
+                                    match stream.peek(&mut buf).await {
+                                        Ok(n) => {
+                                            peeked = n;
+                                            if n >= 11 {
+                                                break;
+                                            }
+                                        }
+                                        Err(_) => return,
+                                    }
+                                    tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+                                }
+                                if logger::is_debug() {
+                                    logger::debug(&format!("Port 443 {}", server::tls::describe_client_hello(&buf[..peeked])));
+                                }
+                                if server::tls::hello_needs_legacy_tls(&buf[..peeked]) {
+                                    let Some(legacy) = legacy_acceptor else {
+                                        logger::warn("An old TLS 1.0 client tried to connect, but legacy TLS support is unavailable on this system.");
+                                        return;
+                                    };
+                                    match legacy.accept(stream).await {
+                                        Ok(tls_stream) => serve_https(TokioIo::new(tls_stream), state).await,
+                                        Err(e) => {
+                                            if logger::is_debug() {
+                                                logger::debug(&format!("Port 443 legacy TLS handshake error: {}", e));
+                                            }
+                                        }
+                                    }
+                                    return;
+                                }
+                                match acceptor.accept(stream).await {
+                                    Ok(tls_stream) => serve_https(TokioIo::new(tls_stream), state).await,
                                     Err(e) => {
                                         if logger::is_debug() {
                                             logger::debug(&format!("Port 443 TLS handshake error: {}", e));
                                         }
-                                        return;
                                     }
-                                };
-                                let io = TokioIo::new(tls_stream);
-                                let service = service_fn(move |req| {
-                                    let state = state.clone();
-                                    async move {
-                                        let resp = handle_request(state, req).await;
-                                        Ok::<_, hyper::Error>(resp.into_hyper_response())
-                                    }
-                                });
-
-                                let _ = http1::Builder::new().serve_connection(io, service).await;
+                                }
                             });
                         }
                     }
@@ -421,6 +450,20 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     logger::success("Server stopped cleanly.");
 
     Ok(())
+}
+
+async fn serve_https<I>(io: I, state: state::SharedState)
+where
+    I: hyper::rt::Read + hyper::rt::Write + Unpin + Send + 'static,
+{
+    let service = service_fn(move |req| {
+        let state = state.clone();
+        async move {
+            let resp = handle_request(state, req).await;
+            Ok::<_, hyper::Error>(resp.into_hyper_response())
+        }
+    });
+    let _ = http1::Builder::new().serve_connection(io, service).await;
 }
 
 async fn handle_request(state: state::SharedState, req: hyper::Request<hyper::body::Incoming>) -> Response {

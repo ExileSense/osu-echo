@@ -179,3 +179,66 @@ pub fn create_tls_acceptor(cert_path: &Path, key_path: &Path) -> Result<TlsAccep
 
     Ok(TlsAcceptor::from(Arc::new(config)))
 }
+
+pub fn describe_client_hello(buf: &[u8]) -> String {
+    let hex: String = buf.iter().take(24).map(|b| format!("{:02x}", b)).collect::<Vec<_>>().join(" ");
+    if buf.len() < 44 || buf[0] != 0x16 || buf[5] != 0x01 {
+        return format!("not a TLS ClientHello ({} bytes, starts {})", buf.len(), hex);
+    }
+    let rec_ver = format!("{}.{}", buf[1], buf[2]);
+    let hello_ver = format!("{}.{}", buf[9], buf[10]);
+    let mut pos = 43;
+    let sid = *buf.get(pos).unwrap_or(&0) as usize;
+    pos += 1 + sid;
+    let cs_len = match buf.get(pos..pos + 2) {
+        Some(b) => ((b[0] as usize) << 8) | b[1] as usize,
+        None => return format!("TLS ClientHello rec={} hello={} (truncated)", rec_ver, hello_ver),
+    };
+    let suites: Vec<String> = buf
+        .get(pos + 2..pos + 2 + cs_len)
+        .unwrap_or(&[])
+        .chunks(2)
+        .filter(|c| c.len() == 2)
+        .map(|c| format!("{:02x}{:02x}", c[0], c[1]))
+        .collect();
+    pos += 2 + cs_len;
+    let comp = *buf.get(pos).unwrap_or(&0) as usize;
+    pos += 1 + comp;
+    let mut exts: Vec<String> = Vec::new();
+    if let Some(b) = buf.get(pos..pos + 2) {
+        let total = ((b[0] as usize) << 8) | b[1] as usize;
+        let mut p = pos + 2;
+        let end = (p + total).min(buf.len());
+        while p + 4 <= end {
+            let t = ((buf[p] as u16) << 8) | buf[p + 1] as u16;
+            let l = ((buf[p + 2] as usize) << 8) | buf[p + 3] as usize;
+            exts.push(format!("{}", t));
+            p += 4 + l;
+        }
+    }
+    format!("TLS ClientHello rec={} hello={} suites=[{}] extensions=[{}]", rec_ver, hello_ver, suites.join(","), exts.join(","))
+}
+
+pub fn hello_needs_legacy_tls(buf: &[u8]) -> bool {
+    buf.len() >= 11 && buf[0] == 0x16 && buf[5] == 0x01 && buf[9] == 3 && buf[10] < 3
+}
+
+pub fn create_legacy_acceptor(cert_path: &Path, key_path: &Path) -> Result<tokio_native_tls::TlsAcceptor, Box<dyn std::error::Error>> {
+    let mut cert_reader = std::io::BufReader::new(std::fs::File::open(cert_path)?);
+    let certs: Vec<CertificateDer<'static>> = rustls_pemfile::certs(&mut cert_reader).collect::<Result<Vec<_>, _>>()?;
+    let leaf = certs.first().ok_or("No certificate found in cert file")?;
+
+    let mut key_reader = std::io::BufReader::new(std::fs::File::open(key_path)?);
+    let key = rustls_pemfile::private_key(&mut key_reader)?.ok_or("No private key found in key file")?;
+    let key_der: Vec<u8> = match key {
+        PrivateKeyDer::Pkcs8(k) => k.secret_pkcs8_der().to_vec(),
+        _ => return Err("Legacy TLS needs a PKCS#8 private key".into()),
+    };
+
+    let pfx = p12::PFX::new(leaf.as_ref(), &key_der, None, "osu-echo", "osu-echo").ok_or("Could not build the PKCS#12 bundle")?;
+    let identity = native_tls::Identity::from_pkcs12(&pfx.to_der(), "osu-echo")?;
+
+    let mut builder = native_tls::TlsAcceptor::builder(identity);
+    builder.min_protocol_version(Some(native_tls::Protocol::Tlsv10));
+    Ok(tokio_native_tls::TlsAcceptor::from(builder.build()?))
+}

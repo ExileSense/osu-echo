@@ -38,6 +38,10 @@ pub async fn handle(
             resp.body = plain_submit_reply(&resp.body);
             resp
         }
+        "/osu-error.php" => {
+            utils::log_error(&format!("[client-error] {}", client_error_summary(headers, body)));
+            Response::empty()
+        }
         "/check-updates.php" => Response::new(b"[]".to_vec()),
         "/release/update.php" => Response::new(b"0".to_vec()),
         "/release/update" | "/release/update2.php" | "/release/patches.php" | "/release/filter.txt" => Response::empty(),
@@ -61,7 +65,6 @@ pub async fn handle(
         "/osu-search.php" => direct_search(state, params).await,
         "/osu-getfriends.php" => get_friends(state, params).await,
         "/lastfm.php"
-        | "/osu-error.php"
         | "/osu-session.php"
         | "/difficulty-rating"
         | "/osu-markasread.php"
@@ -71,6 +74,36 @@ pub async fn handle(
             utils::log_success(&format!("[web] unhandled request: {}", other));
             Response::empty()
         }
+    }
+}
+
+fn client_error_summary(headers: &hyper::HeaderMap, body: &[u8]) -> String {
+    let text = String::from_utf8_lossy(body).to_string();
+    let content_type = headers.get("content-type").and_then(|v| v.to_str().ok()).unwrap_or("");
+    let mut parts: Vec<String> = Vec::new();
+    for field in ["exception", "stacktrace", "feedback", "version"] {
+        let value = if content_type.starts_with("multipart/") {
+            let marker = format!("name=\"{}\"", field);
+            text.find(&marker).map(|i| {
+                let rest = &text[i + marker.len()..];
+                let rest = rest.trim_start_matches(['\r', '\n']);
+                let end = rest.find("\r\n--").unwrap_or(rest.len());
+                rest[..end].to_string()
+            })
+        } else {
+            utils::parse_query_string(&text).get(field).cloned()
+        };
+        if let Some(v) = value {
+            let v = v.replace(['\r', '\n'], " | ");
+            if !v.trim().is_empty() {
+                parts.push(format!("{}: {}", field, v.chars().take(1500).collect::<String>()));
+            }
+        }
+    }
+    if parts.is_empty() {
+        format!("unrecognised report ({} bytes, {})", body.len(), content_type)
+    } else {
+        parts.join(" // ")
     }
 }
 
@@ -126,8 +159,12 @@ async fn score_sub(state: Arc<RwLock<AppState>>, method: &hyper::Method, headers
         }
     };
 
+    let state_for_build = state.clone();
     match crate::handlers::score_submit::process_native_submission(state, decoded).await {
         Ok(charts) => {
+            let build = state_for_build.read().await.client_build;
+            let charts = crate::handlers::score_submit::adapt_accuracy_for_build(charts, build);
+            let charts = crate::handlers::score_submit::fill_empty_numbers_for_build(charts, build);
             utils::log(&format!("[submit] reply: {}", String::from_utf8_lossy(&charts).replace('\n', " // ")));
             Response::new(charts)
         }
