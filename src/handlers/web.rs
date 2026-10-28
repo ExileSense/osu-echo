@@ -974,13 +974,20 @@ struct CatboyBeatmapSet {
     children_beatmaps: Option<Vec<CatboyBeatmap>>,
 }
 
-async fn search_catboy(
+async fn search_catboy(http: &reqwest::Client, query: &str, mode: i32, ranking_status: i32, page: i32) -> Option<Vec<u8>> {
+    let entries = fetch_catboy_entries(http, query, mode, ranking_status, page).await?;
+    let mut direct_resp = DirectResponse::new();
+    direct_resp.entries = entries;
+    Some(direct_resp.as_binary())
+}
+
+async fn fetch_catboy_entries(
     http: &reqwest::Client,
     query: &str,
     mode: i32,
     ranking_status: i32,
     page: i32,
-) -> Option<Vec<u8>> {
+) -> Option<Vec<crate::types::direct_response::DirectEntry>> {
     let mut url = reqwest::Url::parse("https://catboy.best/api/search").ok()?;
     {
         let mut pairs = url.query_pairs_mut();
@@ -1056,7 +1063,90 @@ async fn search_catboy(
         });
     }
 
-    Some(direct_resp.as_binary())
+    Some(direct_resp.entries)
+}
+
+struct FilteredSearch {
+    entries: Vec<crate::types::direct_response::DirectEntry>,
+    next_page: i32,
+    exhausted: bool,
+    stamp: std::time::Instant,
+}
+
+const FILTER_PAGE_SIZE: usize = 100;
+const FILTER_MAX_FETCHES: usize = 30;
+const FILTER_PARALLEL: usize = 5;
+const FILTER_CACHE_SECS: u64 = 600;
+
+fn slice_filtered_page(
+    entries: &[crate::types::direct_response::DirectEntry],
+    page: usize,
+    exhausted: bool,
+) -> (Vec<crate::types::direct_response::DirectEntry>, bool) {
+    let start = (page * FILTER_PAGE_SIZE).min(entries.len());
+    let end = (start + FILTER_PAGE_SIZE).min(entries.len());
+    let more = entries.len() > end || !exhausted;
+    (entries[start..end].to_vec(), more)
+}
+
+async fn search_catboy_before_cutoff(
+    http: &reqwest::Client,
+    query: &str,
+    mode: i32,
+    ranking_status: i32,
+    page: i32,
+    cutoff: &str,
+) -> Option<Vec<u8>> {
+    static CACHE: std::sync::OnceLock<tokio::sync::Mutex<std::collections::HashMap<String, FilteredSearch>>> = std::sync::OnceLock::new();
+    let cache = CACHE.get_or_init(|| tokio::sync::Mutex::new(std::collections::HashMap::new()));
+    let key = format!("{}|{}|{}|{}", query, mode, ranking_status, cutoff);
+    let page = page.max(0) as usize;
+    let want = (page + 1) * FILTER_PAGE_SIZE;
+
+    let mut guard = cache.lock().await;
+    let fresh = || FilteredSearch { entries: Vec::new(), next_page: 0, exhausted: false, stamp: std::time::Instant::now() };
+    let st = guard.entry(key).or_insert_with(fresh);
+    if st.stamp.elapsed().as_secs() > FILTER_CACHE_SECS {
+        *st = fresh();
+    }
+
+    let mut fetched = 0;
+    while st.entries.len() < want && !st.exhausted && fetched < FILTER_MAX_FETCHES {
+        let first = st.next_page;
+        let results = futures_util::future::join_all((0..FILTER_PARALLEL).map(|i| fetch_catboy_entries(http, query, mode, ranking_status, first + i as i32))).await;
+        let mut failed = false;
+        for result in results {
+            match result {
+                None => {
+                    failed = true;
+                    break;
+                }
+                Some(batch) => {
+                    if batch.len() < FILTER_PAGE_SIZE {
+                        st.exhausted = true;
+                    }
+                    st.entries.extend(batch.into_iter().filter(|e| e.last_updated.get(..10).map_or(true, |d| d <= cutoff)));
+                    st.next_page += 1;
+                    fetched += 1;
+                    if st.exhausted {
+                        break;
+                    }
+                }
+            }
+        }
+        if failed {
+            if st.entries.is_empty() && fetched == 0 {
+                return None;
+            }
+            break;
+        }
+    }
+
+    let (slice, more) = slice_filtered_page(&st.entries, page, st.exhausted);
+    let mut resp = DirectResponse::new();
+    resp.entries = slice;
+    resp.more = more;
+    Some(resp.as_binary())
 }
 
 const OLD_CLIENT_MAP_CUTOFF_BUILD: i64 = 20131231;
@@ -1108,12 +1198,12 @@ async fn direct_search(state: Arc<RwLock<AppState>>, params: &std::collections::
         return Response::new(resp.as_binary());
     }
 
-    if let Some(body) = search_catboy(&http, &query, mode, ranking_status, page).await {
+    let mirror_body = match cutoff {
+        Some(c) => search_catboy_before_cutoff(&http, &query, mode, ranking_status, page, c).await,
+        None => search_catboy(&http, &query, mode, ranking_status, page).await,
+    };
+    if let Some(body) = mirror_body {
         utils::log_success(&format!("Catboy mirror: maps loaded for query: `{}`!", query));
-        let body = match cutoff {
-            Some(c) => filter_direct_body(&body, c),
-            None => body,
-        };
         return Response::new(body);
     }
 
@@ -2285,6 +2375,20 @@ mod tests {
 
 #[cfg(test)]
 mod legacy_lb_tests {
+    #[test]
+    fn filtered_pages_are_sliced_and_report_more_results() {
+        let entry = |i: i64| crate::types::direct_response::DirectEntry { id: i, artist: String::new(), title: String::new(), creator: String::new(), ranked: 1, last_updated: "2012-01-01 00:00:00".into(), diffs: vec![] };
+        let entries: Vec<_> = (0..130).map(entry).collect();
+        let (first, more) = super::slice_filtered_page(&entries, 0, true);
+        assert_eq!((first.len(), more), (100, true));
+        let (second, more) = super::slice_filtered_page(&entries, 1, true);
+        assert_eq!((second.len(), more), (30, false));
+        let (second, more) = super::slice_filtered_page(&entries, 1, false);
+        assert_eq!((second.len(), more), (30, true));
+        let (beyond, more) = super::slice_filtered_page(&entries, 5, true);
+        assert_eq!((beyond.len(), more), (0, false));
+    }
+
     #[test]
     fn old_clients_only_see_maps_updated_by_the_end_of_2013() {
         assert_eq!(super::direct_cutoff_for_build(Some(20130604)), Some("2013-12-31"));

@@ -1,7 +1,9 @@
 pub struct DirectResponse {
     pub entries: Vec<DirectEntry>,
+    pub more: bool,
 }
 
+#[derive(Clone)]
 pub struct DirectEntry {
     pub id: i64,
     pub artist: String,
@@ -14,12 +16,12 @@ pub struct DirectEntry {
 
 impl DirectResponse {
     pub fn new() -> Self {
-        Self { entries: Vec::new() }
+        Self { entries: Vec::new(), more: false }
     }
 
     pub fn as_binary(&self) -> Vec<u8> {
         let len = self.entries.len();
-        let header = if len == 100 { "101".to_string() } else { len.to_string() };
+        let header = if len == 100 || self.more { "101".to_string() } else { len.to_string() };
         let mut lines = vec![header];
 
         for entry in &self.entries {
