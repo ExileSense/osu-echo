@@ -314,21 +314,79 @@ fn ppv1_star_cache() -> &'static std::sync::Mutex<std::collections::HashMap<Stri
     CACHE.get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
 }
 
+fn ppv1_star_failures() -> &'static std::sync::Mutex<std::collections::HashMap<String, std::time::Instant>> {
+    static FAILED: std::sync::OnceLock<std::sync::Mutex<std::collections::HashMap<String, std::time::Instant>>> = std::sync::OnceLock::new();
+    FAILED.get_or_init(|| std::sync::Mutex::new(std::collections::HashMap::new()))
+}
+
+fn ppv1_star_inflight() -> &'static std::sync::Mutex<std::collections::HashSet<String>> {
+    static INFLIGHT: std::sync::OnceLock<std::sync::Mutex<std::collections::HashSet<String>>> = std::sync::OnceLock::new();
+    INFLIGHT.get_or_init(|| std::sync::Mutex::new(std::collections::HashSet::new()))
+}
+
+const PPV1_STAR_WAIT_MS: u64 = 1500;
+
 async fn ppv1_star_text(state: &Arc<RwLock<AppState>>, md5: &str) -> Option<String> {
     if let Some(v) = ppv1_star_cache().lock().ok().and_then(|c| c.get(md5).cloned()) {
         return Some(v);
     }
+    let recently_failed = ppv1_star_failures().lock().ok().and_then(|f| f.get(md5).map(|t| t.elapsed().as_secs() < 600)).unwrap_or(false);
+    if recently_failed {
+        return None;
+    }
+    let start_job = ppv1_star_inflight().lock().map(|mut s| s.insert(md5.to_string())).unwrap_or(true);
+    if start_job {
+        let state = state.clone();
+        let md5_owned = md5.to_string();
+        tokio::spawn(async move {
+            let started = std::time::Instant::now();
+            let result = ppv1_star_text_uncached(&state, &md5_owned).await;
+            utils::log(&format!("[ppv1-stars] {} -> {} in {}ms", md5_owned, result.as_deref().unwrap_or("unavailable"), started.elapsed().as_millis()));
+            if result.is_none() {
+                if let Ok(mut f) = ppv1_star_failures().lock() {
+                    f.insert(md5_owned.clone(), std::time::Instant::now());
+                }
+            }
+            if let Ok(mut s) = ppv1_star_inflight().lock() {
+                s.remove(&md5_owned);
+            }
+        });
+    }
+    let deadline = std::time::Instant::now() + std::time::Duration::from_millis(PPV1_STAR_WAIT_MS);
+    while std::time::Instant::now() < deadline {
+        tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+        if let Some(v) = ppv1_star_cache().lock().ok().and_then(|c| c.get(md5).cloned()) {
+            return Some(v);
+        }
+        let done = ppv1_star_inflight().lock().map(|s| !s.contains(md5)).unwrap_or(true);
+        if done {
+            return ppv1_star_cache().lock().ok().and_then(|c| c.get(md5).cloned());
+        }
+    }
+    let state = state.read().await;
+    let db = state.db.lock().await;
+    db::get_beatmap_by_md5(&db, md5).ok().flatten().map(|b| b.difficultyrating).filter(|v| *v > 0.0).map(|v| format!("{:.2}", v))
+}
+
+async fn ppv1_star_text_uncached(state: &Arc<RwLock<AppState>>, md5: &str) -> Option<String> {
     let (http, db_handle, config) = {
         let s = state.read().await;
         (s.http.clone(), s.db.clone(), s.config.clone())
     };
+    let t0 = std::time::Instant::now();
     let bmap = {
         let conn = db_handle.lock().await;
         db::get_beatmap_by_md5(&conn, md5).ok().flatten()
     }?;
-    let content = utils::get_or_fetch_beatmap_content(&http, &db_handle, &config, &bmap).await?;
+    let t_db = t0.elapsed().as_millis();
+    let had_cached_content = bmap.file_content.is_some();
+    let content = utils::get_or_fetch_beatmap_content(&http, &db_handle, &config, &bmap).await;
+    let t_file = t0.elapsed().as_millis();
+    utils::log(&format!("[ppv1-stars] steps for {}: db {}ms, file lookup {}ms (db had content: {}, found: {})", md5, t_db, t_file - t_db, had_cached_content, content.is_some()));
+    let content = content?;
     let map = crate::pp_era::EraMap::parse(content.as_bytes())?.with_beatmap(&bmap);
     let stars = map.ppv1_stars();
+    utils::log(&format!("[ppv1-stars] calc for {}: {}ms", md5, t0.elapsed().as_millis() - t_file));
     if stars <= 0.0 {
         return None;
     }
@@ -428,10 +486,14 @@ async fn legacy_leaderboard(state: Arc<RwLock<AppState>>, params: &std::collecti
     let mut p = params.clone();
     p.remove("u");
     p.entry("v".to_string()).or_insert_with(|| "1".to_string());
+    let started = std::time::Instant::now();
     let resp = leaderboard(state.clone(), &p).await;
+    let scores_ms = started.elapsed().as_millis();
     log_leaderboard_request("legacy", params, &resp.body);
     let text = String::from_utf8_lossy(&resp.body).to_string();
+    let star_started = std::time::Instant::now();
     let out = apply_star_mode(&state, params.get("c").cloned(), legacy_leaderboard_text(&text)).await;
+    utils::log(&format!("[leaderboard:legacy] timing: scores {}ms, stars {}ms", scores_ms, star_started.elapsed().as_millis()));
     for (i, line) in out.lines().take(6).enumerate() {
         utils::log(&format!("[leaderboard:legacy] reply line {}: {}", i, line));
     }

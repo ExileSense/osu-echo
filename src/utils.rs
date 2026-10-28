@@ -566,6 +566,27 @@ pub fn find_and_parse_local_osu_file(
     map_md5: Option<&str>,
     title_hint: Option<&str>,
 ) -> Option<(crate::types::beatmap::Beatmap, String)> {
+    find_and_parse_local_osu_file_inner(songs_dir, set_id, map_id, map_md5, title_hint, true)
+}
+
+pub fn find_and_parse_local_osu_file_quick(
+    songs_dir: &std::path::Path,
+    set_id: Option<i64>,
+    map_id: Option<i64>,
+    map_md5: Option<&str>,
+    title_hint: Option<&str>,
+) -> Option<(crate::types::beatmap::Beatmap, String)> {
+    find_and_parse_local_osu_file_inner(songs_dir, set_id, map_id, map_md5, title_hint, false)
+}
+
+fn find_and_parse_local_osu_file_inner(
+    songs_dir: &std::path::Path,
+    set_id: Option<i64>,
+    map_id: Option<i64>,
+    map_md5: Option<&str>,
+    title_hint: Option<&str>,
+    full_md5_scan: bool,
+) -> Option<(crate::types::beatmap::Beatmap, String)> {
     if !songs_dir.exists() {
         return None;
     }
@@ -589,11 +610,13 @@ pub fn find_and_parse_local_osu_file(
         }
     }
 
-    if let Some(md5) = map_md5 {
-        if !md5.is_empty() {
-            if let Some(folder) = find_local_mapset_folder(songs_dir, set_id, Some(md5)) {
-                if let Some((b, c)) = scan_dir_for_osu_file(&folder, map_id, Some(md5), title_hint, set_id) {
-                    return Some((b, c));
+    if full_md5_scan {
+        if let Some(md5) = map_md5 {
+            if !md5.is_empty() {
+                if let Some(folder) = find_local_mapset_folder(songs_dir, set_id, Some(md5)) {
+                    if let Some((b, c)) = scan_dir_for_osu_file(&folder, map_id, Some(md5), title_hint, set_id) {
+                        return Some((b, c));
+                    }
                 }
             }
         }
@@ -918,21 +941,40 @@ pub async fn get_or_fetch_beatmap_content(
         return Some(content.clone());
     }
 
-    if let Some(songs_dir) = resolve_songs_folder(config) {
+    let songs_dir = resolve_songs_folder(config);
+
+    let local_lookup = |full_scan: bool| -> Option<String> {
+        let songs_dir = songs_dir.as_ref()?;
         let sid = if bmap.beatmapset_id > 0 { Some(bmap.beatmapset_id) } else { None };
         let mid = if bmap.beatmap_id > 0 { Some(bmap.beatmap_id) } else { None };
         let diff_hint = if !bmap.version.is_empty() { format!("[{}]", bmap.version) } else { bmap.title.clone() };
         let md5_opt = if !bmap.file_md5.is_empty() { Some(bmap.file_md5.as_str()) } else { None };
-        if let Some((local_bmap, local_c)) = find_and_parse_local_osu_file(&songs_dir, sid, mid, md5_opt, Some(&diff_hint)) {
-            let md5_match = !bmap.file_md5.is_empty() && local_bmap.file_md5.eq_ignore_ascii_case(&bmap.file_md5);
-            let id_and_ver_match = bmap.beatmap_id > 0 && local_bmap.beatmap_id == bmap.beatmap_id && !bmap.version.is_empty() && local_bmap.version.eq_ignore_ascii_case(&bmap.version);
-
-            if md5_match || id_and_ver_match {
-                let conn = db.lock().await;
-                let _ = crate::db::update_beatmap_file_content(&conn, &bmap.file_md5, &local_c);
-                return Some(local_c);
-            }
+        let found = if full_scan {
+            find_and_parse_local_osu_file(songs_dir, sid, mid, md5_opt, Some(&diff_hint))
+        } else {
+            find_and_parse_local_osu_file_quick(songs_dir, sid, mid, md5_opt, Some(&diff_hint))
+        };
+        let (local_bmap, local_c) = found?;
+        let md5_match = !bmap.file_md5.is_empty() && local_bmap.file_md5.eq_ignore_ascii_case(&bmap.file_md5);
+        let id_and_ver_match = bmap.beatmap_id > 0 && local_bmap.beatmap_id == bmap.beatmap_id && !bmap.version.is_empty() && local_bmap.version.eq_ignore_ascii_case(&bmap.version);
+        if md5_match || id_and_ver_match {
+            Some(local_c)
+        } else {
+            None
         }
+    };
+
+    let store = |content: &str| {
+        let content = content.to_string();
+        async move {
+            let conn = db.lock().await;
+            let _ = crate::db::update_beatmap_file_content(&conn, &bmap.file_md5, &content);
+        }
+    };
+
+    if let Some(local_c) = local_lookup(false) {
+        store(&local_c).await;
+        return Some(local_c);
     }
 
     if bmap.beatmap_id > 0 {
@@ -941,11 +983,15 @@ pub async fn get_or_fetch_beatmap_content(
             let fetched_md5 = format!("{:x}", md5::Md5::digest(fetched_c.as_bytes()));
             let md5_match = bmap.file_md5.is_empty() || fetched_md5.eq_ignore_ascii_case(&bmap.file_md5);
             if md5_match {
-                let conn = db.lock().await;
-                let _ = crate::db::update_beatmap_file_content(&conn, &bmap.file_md5, &fetched_c);
+                store(&fetched_c).await;
                 return Some(fetched_c);
             }
         }
+    }
+
+    if let Some(local_c) = local_lookup(true) {
+        store(&local_c).await;
+        return Some(local_c);
     }
 
     None
